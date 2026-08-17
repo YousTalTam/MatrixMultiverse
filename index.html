@@ -1997,15 +1997,16 @@ if(bestHeroId) {
             
             const dcBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'dc\')"]');
             const marvelBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'marvel\')"]');
-            if (dcBtn) {
+            const waitingLabel = currentCulture === 'en' ? "WAITING FOR HOST..." : "بانتظار المضيف...";
+            if (dcBtn && !dcBtn.querySelector('.waiting-host-label')) {
                 dcBtn.disabled = true;
-                dcBtn.querySelector('.text-lg').innerText = currentCulture === 'en' ? "WAITING FOR HOST..." : "بانتظار المضيف...";
-                dcBtn.classList.add("opacity-50", "cursor-not-allowed");
+                dcBtn.classList.add("opacity-40", "cursor-not-allowed", "pointer-events-none");
+                dcBtn.insertAdjacentHTML('beforeend', `<div class="waiting-host-label absolute inset-0 flex items-center justify-center bg-slate-950/80 rounded-xl"><span class="text-xs sm:text-sm font-black header-font text-white uppercase tracking-widest px-2 text-center">${waitingLabel}</span></div>`);
             }
-            if (marvelBtn) {
+            if (marvelBtn && !marvelBtn.querySelector('.waiting-host-label')) {
                 marvelBtn.disabled = true;
-                marvelBtn.querySelector('.text-lg').innerText = currentCulture === 'en' ? "WAITING FOR HOST..." : "بانتظار المضيف...";
-                marvelBtn.classList.add("opacity-50", "cursor-not-allowed");
+                marvelBtn.classList.add("opacity-40", "cursor-not-allowed", "pointer-events-none");
+                marvelBtn.insertAdjacentHTML('beforeend', `<div class="waiting-host-label absolute inset-0 flex items-center justify-center bg-slate-950/80 rounded-xl"><span class="text-xs sm:text-sm font-black header-font text-white uppercase tracking-widest px-2 text-center">${waitingLabel}</span></div>`);
             }
             
             initPeerSystem(null, () => {
