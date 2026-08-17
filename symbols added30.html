@@ -60,6 +60,11 @@
     <!-- Universe & Identity Setup Overlay -->
     <div id="universe-overlay" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4 anim-pop-in">
         <div class="w-full max-w-3xl glass-panel p-6 rounded-2xl comic-border-orange flex flex-col items-center text-center gap-5 max-h-[95vh] overflow-y-auto custom-scroll">
+            <div class="w-full flex justify-end">
+                <button onclick="toggleLanguageCulture(); playSFX();" class="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-black border border-amber-500/30 rounded text-sm header-font tracking-wider transition hover-juice">
+                    <i class="fa-solid fa-language mr-1"></i> <span id="lang-btn-text-early">العربية</span>
+                </button>
+            </div>
             <div>
                 <h2 class="text-3xl font-black tracking-wider header-font text-white uppercase data-lang" data-en="Initialize Core Matrix" data-ar="تهيئ مصفوفة البعد الأساسي">Initialize Core Matrix</h2>
             </div>
@@ -91,7 +96,7 @@
                     </button>
                     <button onclick="setGameMode('blitz'); playSFX();" id="btn-mode-blitz" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
                         <i class="fa-solid fa-stopwatch absolute top-3 right-3 text-red-500"></i>
-                        <h4 class="text-sm font-bold text-red-400 header-font data-lang" data-en="QUANTUM BLITZ" data-ar="هجوم الوقت">QUANTUM BLITZ</h4>
+                        <h4 class="text-sm font-bold text-red-400 header-font pr-7 data-lang" data-en="QUANTUM BLITZ" data-ar="هجوم الوقت">QUANTUM BLITZ</h4>
                         <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Random forced target. 1-tap select. Independent pools. 7s timer." data-ar="هدف عشوائي إجباري. اختيار بضغطة واحدة. لوحة مستقلة. 7 ثوانٍ.">Random forced target. 1-tap select. Independent pools. 7s timer.</p>
                     </button>
                     <button onclick="setGameMode('blind'); playSFX();" id="btn-mode-blind" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
@@ -334,7 +339,6 @@
     <!-- Active Structural Header -->
     <header id="main-header" class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 glass-panel p-4 rounded-xl relative z-40">
         <div class="flex items-center gap-3">
-            <div id="logo-badge" class="p-2 rounded font-black header-font text-xl transform -rotate-2 bg-slate-700">UNIV</div>
             <div>
                 <h1 id="title-text" class="text-2xl font-bold tracking-wider header-font text-slate-200">HERO MULTIVERSE MATRIX</h1>
                 <p id="mode-display-text" class="text-xs text-amber-500 font-bold uppercase tracking-widest">STANDARD MODE</p>
@@ -453,9 +457,10 @@
             
             <p id="waiting-message" class="text-slate-400 text-xs max-w-sm leading-relaxed mt-2 font-bold animate-pulse data-lang" data-en="Waiting for other players to finish..." data-ar="بانتظار بقية اللاعبين...">Waiting for other players to finish...</p>
             
-            <!-- Host Controls -->
-            <div id="host-controls" class="hidden w-full mt-2 border-t border-slate-800 pt-4">
-                <button onclick="hostStartNextRound(); playSFX();" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded header-font tracking-wider text-sm transition hover-juice">START NEXT ROUND</button>
+            <!-- Host / Solo Controls -->
+            <div id="host-controls" class="hidden w-full mt-2 border-t border-slate-800 pt-4 flex flex-col gap-2">
+                <button onclick="hostStartNextRound(); playSFX();" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded header-font tracking-wider text-sm transition hover-juice data-lang" data-en="START NEXT ROUND" data-ar="بدء الجولة التالية">START NEXT ROUND</button>
+                <button onclick="changeUniverseConfig(); playSFX();" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded header-font tracking-wider text-xs transition hover-juice data-lang" data-en="SWITCH UNIVERSE / MODE" data-ar="تغيير الكون / الطور">SWITCH UNIVERSE / MODE</button>
             </div>
 
             <div id="summary-slots" class="w-full text-left space-y-1 bg-slate-950/40 p-3 rounded border border-slate-900 text-[11px] mt-2"></div>
@@ -1037,6 +1042,7 @@ if(bestHeroId) {
         function toggleLanguageCulture() {
             currentCulture = (currentCulture === "en") ? "ar" : "en";
             document.getElementById("lang-btn-text").innerText = (currentCulture === "en") ? "العربية" : "English";
+            document.getElementById("lang-btn-text-early").innerText = (currentCulture === "en") ? "العربية" : "English";
             const bodyRoot = document.getElementById("root-body");
             const inputAlign = document.getElementById("input-align-box");
             
@@ -1103,20 +1109,17 @@ if(bestHeroId) {
             activeUniverseKey = key;
             document.getElementById("universe-overlay").classList.add("hidden");
             const header = document.getElementById("main-header");
-            const badge = document.getElementById("logo-badge");
             const txt = document.getElementById("title-text");
             const modeTxt = document.getElementById("mode-display-text");
             
             if(key === "dc") {
-                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 glass-panel p-4 rounded-xl border-blue-500/20 comic-border-blue relative z-40";
-                badge.className = "bg-white p-1.5 rounded-lg transform -rotate-2 hover-juice shadow-lg flex items-center justify-center";
-                badge.innerHTML = '<img src="Assests/DC-logo.png" alt="DC" class="h-8 w-8 object-contain">';
-                txt.innerHTML = '<img src="Assests/DC-logo.png" alt="DC Comics Multiplayer Matrix" class="h-12 md:h-16 object-contain">';
+                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 rounded-xl border border-blue-500/20 comic-border-blue relative z-40 bg-cover bg-center";
+                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(23,37,84,0.85), rgba(2,6,23,0.92)), url('Assests/DC-Roaster.JPEG')";
+                txt.innerHTML = '<img src="Assests/DC-logo.png" alt="DC Comics Multiplayer Matrix" class="h-12 md:h-16 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">';
             } else {
-                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 glass-panel p-4 rounded-xl border-red-500/20 comic-border-red relative z-40";
-                badge.className = "bg-white p-1.5 rounded-lg transform -rotate-2 hover-juice shadow-lg flex items-center justify-center";
-                badge.innerHTML = '<img src="Assests/Marvel-logo.png" alt="Marvel" class="h-8 w-auto object-contain">';
-                txt.innerHTML = '<img src="Assests/Marvel-logo.png" alt="Marvel Realtime Draft Field" class="h-10 md:h-14 object-contain">';
+                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 rounded-xl border border-red-500/20 comic-border-red relative z-40 bg-cover bg-center";
+                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(69,10,10,0.85), rgba(2,6,23,0.92)), url('Assests/Marvel-Roaster.JPEG')";
+                txt.innerHTML = '<img src="Assests/Marvel-logo.png" alt="Marvel Realtime Draft Field" class="h-10 md:h-14 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">';
             }
 
             if(gameMode === 'standard') {
@@ -1150,6 +1153,8 @@ if(bestHeroId) {
                 return;
             }
             clearBlitzTimer();
+            document.getElementById("result-overlay").classList.add("hidden");
+            document.getElementById("host-controls").classList.add("hidden");
             document.getElementById("universe-overlay").classList.remove("hidden");
         }
 
@@ -1849,10 +1854,8 @@ if(bestHeroId) {
                 });
                 
                 if (multiplayerRole === "local") {
-                    document.getElementById("waiting-message").innerText = currentCulture === 'en' ? "Round Complete. Initiating next wave..." : "اكتملت الجولة. جاري بدء الموجة التالية...";
-                    setTimeout(() => {
-                        if(gameMode === 'sabotage') { openBanPhase(); } else { executeAutoRoundReset(); }
-                    }, 7000);
+                    document.getElementById("waiting-message").innerText = currentCulture === 'en' ? "Draft Complete. Continue whenever you're ready." : "اكتمل الاختيار. تابع الجولة متى ما شئت.";
+                    document.getElementById("host-controls").classList.remove("hidden");
                 } else if (multiplayerRole === "host") {
                     document.getElementById("host-controls").classList.remove("hidden");
                     document.getElementById("waiting-message").innerText = currentCulture === 'en' ? "All Pilots Complete. Awaiting Host Command." : "أنهى جميع الطيارين. بانتظار أمر المضيف.";
