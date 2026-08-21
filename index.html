@@ -363,6 +363,9 @@
         <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
             <button id="btn-host-room" onclick="hostMultiplayerRoom()" class="whitespace-nowrap px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded header-font tracking-wider transition hover-juice data-lang" data-en="HOST LIVE ROOM" data-ar="استضافة غرفة">HOST LIVE ROOM</button>
             <div id="host-id-display" class="hidden font-mono bg-slate-950 px-2 py-1.5 rounded border border-slate-800 text-amber-400 font-bold select-all"></div>
+            <button id="btn-kick-player" onclick="kickPeerPlayer()" class="hidden whitespace-nowrap px-3 py-1.5 bg-orange-900/40 hover:bg-orange-800/60 text-orange-400 font-bold rounded header-font border border-orange-500/30 transition hover-juice data-lang" data-en="KICK PLAYER" data-ar="إزالة اللاعب">KICK PLAYER</button>
+            <button id="btn-dismantle-lobby" onclick="dismantleLobbyRoom()" class="hidden whitespace-nowrap px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-red-400 font-bold rounded header-font border border-red-500/30 transition hover-juice data-lang" data-en="DISMANTLE LOBBY" data-ar="إغلاق الغرفة">DISMANTLE LOBBY</button>
+            <button id="btn-leave-lobby" onclick="leaveLobby()" class="hidden whitespace-nowrap px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 text-red-400 font-bold rounded header-font border border-red-500/30 transition hover-juice data-lang" data-en="LEAVE LOBBY" data-ar="مغادرة الغرفة">LEAVE LOBBY</button>
             <span class="text-slate-600 font-bold data-lang" data-en="OR" data-ar="أو">OR</span>
             <input type="text" id="join-room-input" placeholder="6-DIGIT CODE..." class="bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white focus:outline-none focus:border-slate-700 w-32 uppercase tracking-wider text-center">
             <button id="btn-join-room" onclick="joinMultiplayerRoom('join-room-input')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded header-font border border-slate-700 transition hover-juice data-lang" data-en="JOIN" data-ar="انضمام">JOIN</button>
@@ -1151,8 +1154,8 @@ if(bestHeroId) {
             if (charListActiveUniverse) renderCharacterListGrid(charListActiveUniverse, document.getElementById("charlist-search-input").value);
         }
 
-        function setGameMode(mode) {
-            if (multiplayerRole === "peer") return;
+        function setGameMode(mode, isNetworkSync = false) {
+            if (multiplayerRole === "peer" && !isNetworkSync) return;
             gameMode = mode;
             const buttons = ['standard', 'blitz', 'blind', 'sabotage'];
             buttons.forEach(m => {
@@ -1557,6 +1560,13 @@ if(bestHeroId) {
             const el = document.getElementById("character-pool");
             el.querySelectorAll("button[data-hero-id]").forEach(card => {
                 const isActive = selectedCharacter && selectedCharacter.id === card.dataset.heroId;
+                // The entrance animation (anim-fade-up) is intentionally left out of this
+                // class string so re-selecting a card doesn't replay it. But that animation
+                // is also what was holding opacity at 1 (via `forwards` fill-mode) over top
+                // of the inline `opacity: 0` set at creation time. Dropping the animation
+                // class un-masks that stale inline style, so it must be cleared explicitly
+                // or every card silently goes invisible the instant any card is clicked.
+                card.style.opacity = '1';
                 card.className = `p-2.5 rounded-lg flex flex-col items-center justify-center text-center gap-1.5 border transition duration-150 relative overflow-hidden hover-juice ${
                     isActive ? 'border-amber-400 bg-amber-950/20 scale-[1.05] shadow-lg shadow-amber-500/20 z-10' : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
                 }`;
@@ -2118,6 +2128,7 @@ if(bestHeroId) {
         function setupNetworkTrafficChannels() {
             activeConnection.on('open', () => {
                 setNetworkDisplayConnected();
+                updateLobbyControlVisibility();
                 activeConnection.send({ type: "HELLO_IDENTITY", user: localPlayerUser });
                 if (multiplayerRole === "host") {
                     activeConnection.send({ type: "INIT_SYNC", universe: activeUniverseKey, mode: gameMode, poolIds: currentPool.map(c=>c.id), user: localPlayerUser });
@@ -2135,17 +2146,17 @@ if(bestHeroId) {
                 } else if (data.type === "RESPOND_IDENTITY") {
                     Object.assign(roomCompetitorsData, data.dataState);
                 } else if (data.type === "LOBBY_STATE_UPDATE") {
-                    setGameMode(data.mode);
+                    setGameMode(data.mode, true);
                 } else if (data.type === "INIT_SYNC") {
-                    setGameMode(data.mode);
+                    setGameMode(data.mode, true);
                     selectUniverse(data.universe, false);
-                    if (data.mode !== 'blitz') syncPoolFromRemoteIds(data.poolIds);
+                    if (data.mode !== 'blitz') { regenerateFilteredPool(); renderPoolGrid(); renderSlotsMatrix(); }
                 } else if (data.type === "UNIVERSE_CHANGE") {
-                    setGameMode(data.mode);
+                    setGameMode(data.mode, true);
                     selectUniverse(data.universe, false);
                 } else if (data.type === "FIELD_RESET") {
                     resetGameField(false, data.clearAll);
-                    if (gameMode !== 'blitz') syncPoolFromRemoteIds(data.currentPoolIds);
+                    if (gameMode !== 'blitz') { regenerateFilteredPool(); renderPoolGrid(); renderSlotsMatrix(); }
                 } else if (data.type === "START_BLITZ_ROUND") {
                     if (gameMode === 'blitz') {
                         blitzRoundActive = true;
@@ -2157,7 +2168,6 @@ if(bestHeroId) {
                     if(roomCompetitorsData[data.user]) {
                         roomCompetitorsData[data.user].progress = data.progress || 0;
                     }
-                    if (gameMode !== 'blitz') syncPoolFromRemoteIds(data.currentPoolIds);
                 } else if (data.type === "BANS_READY") {
                     opponentBans = data.bans || [];
                     opponentBansReady = true;
@@ -2184,13 +2194,118 @@ if(bestHeroId) {
                     }
                 } else if (data.type === "CHAT_MESSAGE") {
                     appendChatMessage(data.user, data.text, false);
+                } else if (data.type === "KICKED_FROM_LOBBY") {
+                    revertToSoloMode(currentCulture === 'en' ? "The host has removed you from the lobby. You'll continue on your own." : "قام المضيف بإزالتك من الغرفة. ستتابع اللعب بمفردك.");
+                } else if (data.type === "LOBBY_DISMANTLED") {
+                    revertToSoloMode(currentCulture === 'en' ? "The host has closed the lobby. You'll continue on your own." : "أغلق المضيف الغرفة. ستتابع اللعب بمفردك.");
                 }
                 refreshScoreboardDisplay();
             });
             
             activeConnection.on('close', () => {
-                setNetworkDisplayDisconnected();
+                if (multiplayerRole === "host") {
+                    handlePeerLeftRoom(true);
+                } else if (multiplayerRole === "peer") {
+                    revertToSoloMode(currentCulture === 'en' ? "Lost connection to the host. Switched to solo mode." : "انقطع الاتصال بالمضيف. تم التحول إلى وضع اللعب الفردي.");
+                }
             });
+            activeConnection.on('error', () => {
+                if (multiplayerRole === "host") {
+                    handlePeerLeftRoom(true);
+                } else if (multiplayerRole === "peer") {
+                    revertToSoloMode(currentCulture === 'en' ? "Lost connection to the host. Switched to solo mode." : "انقطع الاتصال بالمضيف. تم التحول إلى وضع اللعب الفردي.");
+                }
+            });
+        }
+
+        // --- LOBBY MANAGEMENT: kick / dismantle / leave --- //
+        function updateLobbyControlVisibility() {
+            const kickBtn = document.getElementById("btn-kick-player");
+            const dismantleBtn = document.getElementById("btn-dismantle-lobby");
+            const leaveBtn = document.getElementById("btn-leave-lobby");
+            if (kickBtn) kickBtn.classList.toggle("hidden", !(multiplayerRole === 'host' && activeConnection));
+            if (dismantleBtn) dismantleBtn.classList.toggle("hidden", multiplayerRole !== 'host');
+            if (leaveBtn) leaveBtn.classList.toggle("hidden", multiplayerRole !== 'peer');
+        }
+
+        function kickPeerPlayer() {
+            if (multiplayerRole !== 'host' || !activeConnection) return;
+            if (!confirm(currentCulture === 'en' ? "Remove this player from the lobby?" : "هل تريد إزالة هذا اللاعب من الغرفة؟")) return;
+            try { activeConnection.send({ type: "KICKED_FROM_LOBBY" }); } catch (e) {}
+            setTimeout(() => handlePeerLeftRoom(false), 150);
+        }
+
+        function dismantleLobbyRoom() {
+            if (multiplayerRole !== 'host') return;
+            if (!confirm(currentCulture === 'en' ? "Shut down the entire lobby? Any joined player will continue on their own." : "هل تريد إغلاق الغرفة بالكامل؟ أي لاعب منضم سيتابع اللعب بمفرده.")) return;
+            if (activeConnection) {
+                try { activeConnection.send({ type: "LOBBY_DISMANTLED" }); } catch (e) {}
+            }
+            setTimeout(() => revertToSoloMode(), 150);
+        }
+
+        function leaveLobby() {
+            if (multiplayerRole !== 'peer') return;
+            if (!confirm(currentCulture === 'en' ? "Leave this lobby and continue on your own?" : "هل تريد مغادرة الغرفة والمتابعة بمفردك؟")) return;
+            revertToSoloMode();
+        }
+
+        // Called on the HOST's side whenever the connected peer goes away (voluntarily left,
+        // was kicked, or disconnected unexpectedly). The room itself (peerInstance) stays open
+        // and joinable by someone new -- only Dismantle Lobby fully closes it. This also clears
+        // the departed player's stale entry from roomCompetitorsData, which is what actually
+        // unsticks round-completion: without this, "every player finished" could never become
+        // true again once someone left mid-round, permanently blocking the remaining player.
+        function handlePeerLeftRoom(notify) {
+            if (activeConnection) { try { activeConnection.close(); } catch (e) {} }
+            activeConnection = null;
+            Object.keys(roomCompetitorsData).forEach(k => {
+                if (k !== localPlayerUser) delete roomCompetitorsData[k];
+            });
+            document.getElementById("sync-dot").className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
+            document.getElementById("sync-ping").className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+            document.getElementById("network-status-text").innerText = currentCulture === "en" ? "PLAYER LEFT - ROOM STILL OPEN" : "غادر اللاعب - الغرفة لا تزال مفتوحة";
+            updateLobbyControlVisibility();
+            document.getElementById("host-controls").classList.add("hidden");
+            checkAndExecuteAutoRoundMigration();
+            if (notify) alert(currentCulture === 'en' ? "The other player has left. Your room is still open for someone new to join, and you can continue." : "غادر اللاعب الآخر. غرفتك لا تزال مفتوحة لانضمام لاعب جديد، ويمكنك المتابعة.");
+        }
+
+        // Fully reverts THIS client to solo mode. Used when a peer leaves/is kicked/loses the
+        // host, and when a host explicitly dismantles their own room.
+        function revertToSoloMode(message) {
+            if (activeConnection) { try { activeConnection.close(); } catch (e) {} }
+            if (peerInstance) { try { peerInstance.destroy(); } catch (e) {} peerInstance = null; }
+            activeConnection = null;
+            multiplayerRole = "local";
+            roomCompetitorsData = {};
+            if (localPlayerUser) {
+                roomCompetitorsData[localPlayerUser] = { progress: Object.keys(assignedSlots).length, score: null, finished: false, displayScore: null };
+            }
+            setNetworkDisplayDisconnected();
+            updateLobbyControlVisibility();
+            document.getElementById("host-controls").classList.add("hidden");
+            document.getElementById("btn-host-room").classList.remove("hidden");
+            const overlayHostBtn = document.getElementById("btn-host-room-overlay");
+            if (overlayHostBtn) overlayHostBtn.classList.remove("hidden");
+            document.getElementById("host-id-display").classList.add("hidden");
+            const idDisplayOverlay = document.getElementById("host-id-display-overlay");
+            if (idDisplayOverlay) idDisplayOverlay.classList.add("hidden");
+
+            // Restore the universe-selection buttons a joining peer had disabled/overlaid
+            // with a "waiting for host" banner, so a former peer can freely pick their own.
+            const dcBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'dc\')"]');
+            const marvelBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'marvel\')"]');
+            [dcBtn, marvelBtn].forEach(btn => {
+                if (!btn) return;
+                btn.disabled = false;
+                btn.classList.remove("opacity-40", "cursor-not-allowed", "pointer-events-none");
+                const label = btn.querySelector(".waiting-host-label");
+                if (label) label.remove();
+            });
+
+            checkAndExecuteAutoRoundMigration();
+            if (message) alert(message);
         }
 
         function syncPoolFromRemoteIds(ids) {
