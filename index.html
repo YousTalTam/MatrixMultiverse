@@ -462,6 +462,9 @@
         </div>
     </main>
 
+    <!-- Synergy Activation Toast Stack -->
+    <div id="synergy-toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4 w-full max-w-md"></div>
+
     <!-- Quick Chat Slide Panel -->
     <div id="chat-panel" class="fixed bottom-0 right-4 w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-t-xl shadow-2xl z-50 chat-closed flex flex-col" style="height: 400px;">
         <div class="p-3 border-b border-slate-700 bg-slate-800 rounded-t-xl flex justify-between items-center cursor-pointer hover-juice" onclick="toggleChatPanel()">
@@ -757,6 +760,8 @@
 	    { name: "Fantastic Four", ids: ['m81', 'm82', 'm83', 'm84'], min: 3, bonus: 12, universe : 'marvel' },
         ];
 
+        let triggeredSynergyNames = new Set();
+
 
         let activeUniverseKey = "dc";
         let currentPool = [];
@@ -984,6 +989,49 @@
             });
         }
 
+        // --- LIVE SYNERGY ACTIVATION TOAST --- //
+        function checkForNewlyCompletedSynergies() {
+            const draftedIds = Object.values(assignedSlots);
+            SYNERGIES.forEach(syn => {
+                if (syn.universe !== activeUniverseKey) return;
+                const matchCount = syn.ids.filter(id => draftedIds.includes(id)).length;
+                if (matchCount >= syn.min && !triggeredSynergyNames.has(syn.name)) {
+                    triggeredSynergyNames.add(syn.name);
+                    showSynergyToast(syn);
+                }
+            });
+        }
+
+        function showSynergyToast(syn) {
+            const container = document.getElementById("synergy-toast-container");
+            const isDC = syn.universe === 'dc';
+            const accentBorder = isDC ? 'border-blue-500/50' : 'border-red-500/50';
+            const accentText = isDC ? 'text-blue-400' : 'text-red-400';
+            const labelStr = currentCulture === 'en' ? 'SYNERGY ACTIVATED' : 'تفعيل التآزر';
+
+            const toast = document.createElement("div");
+            toast.className = `w-full glass-panel ${accentBorder} border-2 rounded-xl px-4 py-3 shadow-2xl anim-pop-in flex items-center gap-3 pointer-events-auto`;
+            toast.innerHTML = `
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                    <i class="fa-solid fa-bolt-lightning text-emerald-400"></i>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <p class="text-[10px] font-black ${accentText} uppercase tracking-widest header-font">${labelStr}</p>
+                    <p class="text-sm font-black text-white header-font uppercase truncate">${syn.name}</p>
+                </div>
+                <div class="flex-shrink-0 text-emerald-400 font-black text-sm bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.3)] whitespace-nowrap">+${syn.bonus}%</div>
+            `;
+            container.appendChild(toast);
+            playSFX();
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-12px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3200);
+        }
+
         // LOCAL STAT TRACKING LOGIC
         function updateLocalStats(score, finalSlotsObj) {
             let stats = JSON.parse(localStorage.getItem('heroMatrixStats') || '{"matches":0, "highScore":0, "drafts":{}}');
@@ -1146,12 +1194,14 @@ if(bestHeroId) {
             const modeTxt = document.getElementById("mode-display-text");
             
             if(key === "dc") {
-                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 rounded-xl border border-blue-500/20 comic-border-blue relative z-40 bg-cover bg-center";
-                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(23,37,84,0.85), rgba(2,6,23,0.92)), url('Assests/DC-Roaster.JPEG')";
+                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 md:py-7 rounded-xl border border-blue-500/20 comic-border-blue relative z-40 bg-cover";
+                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(23,37,84,0.85), rgba(2,6,23,0.92)), url('Assests/DC-Roaster-banner.jpg')";
+                header.style.backgroundPosition = "center 25%";
                 txt.innerHTML = '<img src="Assests/DC-logo.png" alt="DC Comics Multiplayer Matrix" class="h-12 md:h-16 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">';
             } else {
-                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 rounded-xl border border-red-500/20 comic-border-red relative z-40 bg-cover bg-center";
-                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(69,10,10,0.85), rgba(2,6,23,0.92)), url('Assests/Marvel-Roaster.JPEG')";
+                header.className = "w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-4 mb-6 p-4 md:py-7 rounded-xl border border-red-500/20 comic-border-red relative z-40 bg-cover";
+                header.style.backgroundImage = "linear-gradient(to bottom right, rgba(69,10,10,0.85), rgba(2,6,23,0.92)), url('Assests/Marvel-Roaster-banner.jpg')";
+                header.style.backgroundPosition = "center 32%";
                 txt.innerHTML = '<img src="Assests/Marvel-logo.png" alt="Marvel Realtime Draft Field" class="h-10 md:h-14 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">';
             }
 
@@ -1307,6 +1357,7 @@ if(bestHeroId) {
         // --- CORE DRAFT RESET --- //
         function resetGameField(sendNetworkEvent = true, wipeLeaderboardScores = false) {
             assignedSlots = {};
+            triggeredSynergyNames.clear();
             selectedCharacter = null;
             activeBlitzCategoryId = null;
             blitzRoundActive = (gameMode !== 'blitz'); 
@@ -1447,6 +1498,7 @@ if(bestHeroId) {
             
             currentPool.forEach((char, index) => {
                 const card = document.createElement("button");
+                card.dataset.heroId = char.id;
                 const active = selectedCharacter && selectedCharacter.id === char.id;
                 const isBlind = gameMode === 'blind';
                 
@@ -1490,11 +1542,24 @@ if(bestHeroId) {
                         }
                     } else {
                         selectedCharacter = char;
-                        renderPoolGrid();
+                        updatePoolSelectionHighlight();
                         renderPreviewComponent();
                     }
                 };
                 el.appendChild(card);
+            });
+        }
+
+        // Lightweight selection-highlight update: only swaps the border/background/scale
+        // classes on already-rendered pool cards, so clicking a card doesn't re-trigger
+        // every card's entrance animation (which the full renderPoolGrid() rebuild would).
+        function updatePoolSelectionHighlight() {
+            const el = document.getElementById("character-pool");
+            el.querySelectorAll("button[data-hero-id]").forEach(card => {
+                const isActive = selectedCharacter && selectedCharacter.id === card.dataset.heroId;
+                card.className = `p-2.5 rounded-lg flex flex-col items-center justify-center text-center gap-1.5 border transition duration-150 relative overflow-hidden hover-juice ${
+                    isActive ? 'border-amber-400 bg-amber-950/20 scale-[1.05] shadow-lg shadow-amber-500/20 z-10' : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
+                }`;
             });
         }
 
@@ -1610,6 +1675,7 @@ if(bestHeroId) {
 
         function executeCharacterCommit(categoryId, heroId) {
             assignedSlots[categoryId] = heroId;
+            checkForNewlyCompletedSynergies();
             const currentTotalSelections = Object.keys(assignedSlots).length;
             saveSessionState();
             
@@ -1908,6 +1974,7 @@ if(bestHeroId) {
 
         function executeAutoRoundReset() {
             assignedSlots = {};
+            triggeredSynergyNames.clear();
             selectedCharacter = null;
             activeBlitzCategoryId = null;
             blitzRoundActive = (gameMode !== 'blitz');
