@@ -101,59 +101,74 @@
             <div>
                 <h2 class="text-2xl sm:text-3xl font-black tracking-wider header-font text-white uppercase data-lang" data-en="Initialize Core Matrix" data-ar="تهيئ مصفوفة البعد الأساسي">Initialize Core Matrix</h2>
             </div>
-            <div class="w-full max-w-md bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-left" id="input-align-box">
-                <label class="block text-xs uppercase font-bold text-slate-400 header-font tracking-wider mb-2 data-lang" data-en="Set Your Pilot Callsign" data-ar="اختر اسم المستخدم">Set Your Pilot Callsign</label>
-                <input type="text" id="username-identity-input" placeholder="..." class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white font-bold tracking-wide focus:outline-none focus:border-amber-500 uppercase transition hover-juice">
-            </div>
+            <div id="setup-content-panel" class="w-full flex flex-col items-center gap-5">
+                <div class="w-full max-w-md bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-left" id="input-align-box">
+                    <label class="block text-xs uppercase font-bold text-slate-400 header-font tracking-wider mb-2 data-lang" data-en="Set Your Pilot Callsign" data-ar="اختر اسم المستخدم">Set Your Pilot Callsign</label>
+                    <input type="text" id="username-identity-input" placeholder="..." class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white font-bold tracking-wide focus:outline-none focus:border-amber-500 uppercase transition hover-juice">
+                </div>
 
-            <!-- Multiplayer Setup in Menu -->
-            <div class="w-full max-w-md text-left bg-slate-900/40 p-4 rounded-xl border border-slate-800 flex flex-col gap-3">
-                <label class="block text-xs uppercase font-bold text-amber-400 header-font tracking-wider mb-1 data-lang" data-en="Multiplayer Setup (Optional)" data-ar="إعداد اللعب الجماعي (اختياري)">Multiplayer Setup (Optional)</label>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="btn-host-room-overlay" onclick="hostMultiplayerRoom()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded header-font tracking-wider text-xs flex-1 transition hover-juice data-lang" data-en="HOST LIVE ROOM" data-ar="استضافة غرفة">HOST LIVE ROOM</button>
-                    <div id="host-id-display-overlay" class="hidden font-mono bg-slate-950 px-3 py-2 rounded border border-slate-800 text-amber-400 font-bold select-all text-center flex-1"></div>
-                    <div class="flex gap-2 flex-1">
-                        <input type="text" id="join-room-input-overlay" placeholder="6-DIGIT CODE..." class="bg-slate-950 border border-slate-800 rounded px-2 py-2 text-white focus:outline-none focus:border-slate-700 w-full uppercase tracking-wider text-center text-xs">
-                        <button id="btn-join-room-overlay" onclick="joinMultiplayerRoom('join-room-input-overlay')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded header-font border border-slate-700 transition hover-juice data-lang" data-en="JOIN" data-ar="انضمام">JOIN</button>
+                <!-- Multiplayer Setup in Menu -->
+                <div class="w-full max-w-md text-left bg-slate-900/40 p-4 rounded-xl border border-slate-800 flex flex-col gap-3">
+                    <label class="block text-xs uppercase font-bold text-amber-400 header-font tracking-wider mb-1 data-lang" data-en="Multiplayer Setup (Optional)" data-ar="إعداد اللعب الجماعي (اختياري)">Multiplayer Setup (Optional)</label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="btn-host-room-overlay" onclick="hostMultiplayerRoom()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded header-font tracking-wider text-xs flex-1 transition hover-juice data-lang" data-en="HOST LIVE ROOM" data-ar="استضافة غرفة">HOST LIVE ROOM</button>
+                        <div id="host-id-display-overlay" class="hidden font-mono bg-slate-950 px-3 py-2 rounded border border-slate-800 text-amber-400 font-bold select-all text-center flex-1"></div>
+                        <div class="flex gap-2 flex-1">
+                            <input type="text" id="join-room-input-overlay" placeholder="6-DIGIT CODE..." class="bg-slate-950 border border-slate-800 rounded px-2 py-2 text-white focus:outline-none focus:border-slate-700 w-full uppercase tracking-wider text-center text-xs">
+                            <button id="btn-join-room-overlay" onclick="joinMultiplayerRoom('join-room-input-overlay')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded header-font border border-slate-700 transition hover-juice data-lang" data-en="JOIN" data-ar="انضمام">JOIN</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Game Mode Selector -->
-            <div class="w-full text-left bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-                <label class="block text-xs uppercase font-bold text-amber-400 header-font tracking-wider mb-3 data-lang" data-en="Select Combat Protocol (Game Mode)" data-ar="اختر بروتوكول القتال (طور اللعب)">Select Combat Protocol (Game Mode)</label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <button onclick="setGameMode('standard'); playSFX();" id="btn-mode-standard" class="p-3 border-2 border-amber-500 bg-amber-950/20 rounded-lg text-left transition relative hover-juice">
-                        <h4 class="text-sm font-bold text-white header-font data-lang" data-en="STANDARD" data-ar="الطور العادي">STANDARD</h4>
-                        <p class="text-[10px] text-slate-400 mt-1 data-lang" data-en="10 options. Infinite time. Strategic drafting." data-ar="10 خيارات. وقت لا نهائي. تخطيط استراتيجي.">10 options. Infinite time. Strategic drafting.</p>
+                <!-- Game Mode Selector -->
+                <div class="w-full text-left bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <label class="block text-xs uppercase font-bold text-amber-400 header-font tracking-wider mb-3 data-lang" data-en="Select Combat Protocol (Game Mode)" data-ar="اختر بروتوكول القتال (طور اللعب)">Select Combat Protocol (Game Mode)</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <button onclick="setGameMode('standard'); playSFX();" id="btn-mode-standard" class="p-3 border-2 border-amber-500 bg-amber-950/20 rounded-lg text-left transition relative hover-juice">
+                            <h4 class="text-sm font-bold text-white header-font data-lang" data-en="STANDARD" data-ar="الطور العادي">STANDARD</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 data-lang" data-en="10 options. Infinite time. Strategic drafting." data-ar="10 خيارات. وقت لا نهائي. تخطيط استراتيجي.">10 options. Infinite time. Strategic drafting.</p>
+                        </button>
+                        <button onclick="setGameMode('blitz'); playSFX();" id="btn-mode-blitz" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
+                            <i class="fa-solid fa-stopwatch absolute top-3 right-3 text-red-500"></i>
+                            <h4 class="text-sm font-bold text-red-400 header-font pr-7 data-lang" data-en="QUANTUM BLITZ" data-ar="هجوم الوقت">QUANTUM BLITZ</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Random forced target. 1-tap select. Independent pools. 7s timer." data-ar="هدف عشوائي إجباري. اختيار بضغطة واحدة. لوحة مستقلة. 7 ثوانٍ.">Random forced target. 1-tap select. Independent pools. 7s timer.</p>
+                        </button>
+                        <button onclick="setGameMode('blind'); playSFX();" id="btn-mode-blind" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
+                            <i class="fa-solid fa-eye-slash absolute top-3 right-3 text-purple-500"></i>
+                            <h4 class="text-sm font-bold text-purple-400 header-font data-lang" data-en="BLIND LORE" data-ar="القصة المخفية">BLIND LORE</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Names & Tiers hidden. Draft using only character lore." data-ar="الأسماء والفئات مخفية. اختر بَطلك بناءً على القصة والوصف فقط.">Names & Tiers hidden. Draft using only character lore.</p>
+                        </button>
+                        <button onclick="setGameMode('sabotage'); playSFX();" id="btn-mode-sabotage" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
+                            <i class="fa-solid fa-user-ninja absolute top-3 right-3 text-emerald-500"></i>
+                            <h4 class="text-sm font-bold text-emerald-400 header-font data-lang" data-en="SABOTAGE PROTOCOL" data-ar="بروتوكول التخريب">SABOTAGE PROTOCOL</h4>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Ban 8 heroes at the start. Steal 2 from your opponent at the end." data-ar="احظر 8 أبطال في البداية. اسرق بطلين من خصمك في النهاية.">Ban 8 heroes at the start. Steal 2 from your opponent at the end.</p>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
+                    <button onclick="submitIdentityAndUniverse('dc')" class="h-28 p-4 rounded-xl border border-blue-500/30 hover:border-blue-400 transition duration-200 relative hover-juice bg-cover bg-center flex items-center justify-center" style="background-image: linear-gradient(to bottom right, rgba(23,37,84,0.80), rgba(2,6,23,0.90)), url('Assests/DC-Roaster.JPEG');">
+                        <span class="absolute top-3 right-3 bg-blue-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full header-font">90</span>
+                        <img src="Assests/DC-logo.png" alt="DC Universe" class="h-14 w-14 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
                     </button>
-                    <button onclick="setGameMode('blitz'); playSFX();" id="btn-mode-blitz" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
-                        <i class="fa-solid fa-stopwatch absolute top-3 right-3 text-red-500"></i>
-                        <h4 class="text-sm font-bold text-red-400 header-font pr-7 data-lang" data-en="QUANTUM BLITZ" data-ar="هجوم الوقت">QUANTUM BLITZ</h4>
-                        <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Random forced target. 1-tap select. Independent pools. 7s timer." data-ar="هدف عشوائي إجباري. اختيار بضغطة واحدة. لوحة مستقلة. 7 ثوانٍ.">Random forced target. 1-tap select. Independent pools. 7s timer.</p>
-                    </button>
-                    <button onclick="setGameMode('blind'); playSFX();" id="btn-mode-blind" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
-                        <i class="fa-solid fa-eye-slash absolute top-3 right-3 text-purple-500"></i>
-                        <h4 class="text-sm font-bold text-purple-400 header-font data-lang" data-en="BLIND LORE" data-ar="القصة المخفية">BLIND LORE</h4>
-                        <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Names & Tiers hidden. Draft using only character lore." data-ar="الأسماء والفئات مخفية. اختر بَطلك بناءً على القصة والوصف فقط.">Names & Tiers hidden. Draft using only character lore.</p>
-                    </button>
-                    <button onclick="setGameMode('sabotage'); playSFX();" id="btn-mode-sabotage" class="p-3 border border-slate-700 bg-slate-950 rounded-lg text-left transition hover:border-slate-500 relative hover-juice">
-                        <i class="fa-solid fa-user-ninja absolute top-3 right-3 text-emerald-500"></i>
-                        <h4 class="text-sm font-bold text-emerald-400 header-font data-lang" data-en="SABOTAGE PROTOCOL" data-ar="بروتوكول التخريب">SABOTAGE PROTOCOL</h4>
-                        <p class="text-[10px] text-slate-400 mt-1 leading-tight data-lang" data-en="Ban 8 heroes at the start. Steal 2 from your opponent at the end." data-ar="احظر 8 أبطال في البداية. اسرق بطلين من خصمك في النهاية.">Ban 8 heroes at the start. Steal 2 from your opponent at the end.</p>
+                    <button onclick="submitIdentityAndUniverse('marvel')" class="h-28 p-4 rounded-xl border border-red-500/30 hover:border-red-400 transition duration-200 relative hover-juice bg-cover bg-center flex items-center justify-center" style="background-image: linear-gradient(to bottom right, rgba(69,10,10,0.80), rgba(2,6,23,0.90)), url('Assests/Marvel-Roaster.JPEG');">
+                        <span class="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full header-font">90</span>
+                        <img src="Assests/Marvel-logo.png" alt="Marvel Universe" class="h-12 w-auto max-w-[70%] object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
                     </button>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
-                <button onclick="submitIdentityAndUniverse('dc')" class="h-28 p-4 rounded-xl border border-blue-500/30 hover:border-blue-400 transition duration-200 relative hover-juice bg-cover bg-center flex items-center justify-center" style="background-image: linear-gradient(to bottom right, rgba(23,37,84,0.80), rgba(2,6,23,0.90)), url('Assests/DC-Roaster.JPEG');">
-                    <span class="absolute top-3 right-3 bg-blue-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full header-font">90</span>
-                    <img src="Assests/DC-logo.png" alt="DC Universe" class="h-14 w-14 object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
-                </button>
-                <button onclick="submitIdentityAndUniverse('marvel')" class="h-28 p-4 rounded-xl border border-red-500/30 hover:border-red-400 transition duration-200 relative hover-juice bg-cover bg-center flex items-center justify-center" style="background-image: linear-gradient(to bottom right, rgba(69,10,10,0.80), rgba(2,6,23,0.90)), url('Assests/Marvel-Roaster.JPEG');">
-                    <span class="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full header-font">90</span>
-                    <img src="Assests/Marvel-logo.png" alt="Marvel Universe" class="h-12 w-auto max-w-[70%] object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
-                </button>
+            <!-- Peer waiting panel: shown INSTEAD of setup-content-panel once a peer has joined a lobby.
+                 Replaces the old approach of individually disabling each button, which was easy to
+                 forget to undo (that's what caused mode/universe selection staying stuck after a
+                 player left or was kicked). Now reverting is just: show one panel, hide the other. -->
+            <div id="peer-waiting-panel" class="hidden w-full max-w-md flex-col items-center gap-4 text-center py-6">
+                <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                    <i class="fa-solid fa-satellite-dish text-amber-400 text-xl animate-pulse"></i>
+                </div>
+                <h3 id="peer-waiting-title" class="text-lg font-black header-font text-amber-400 uppercase data-lang" data-en="Waiting for the Host" data-ar="بانتظار المضيف">Waiting for the Host</h3>
+                <p id="peer-waiting-subtext" class="text-sm text-slate-400 data-lang" data-en="The host is choosing a game mode and a universe. You'll join automatically the moment they start." data-ar="يقوم المضيف باختيار طور اللعب والكون. ستنضم تلقائياً بمجرد أن يبدأ.">The host is choosing a game mode and a universe. You'll join automatically the moment they start.</p>
+                <button id="btn-leave-lobby-early" onclick="leaveLobby()" class="mt-2 px-4 py-2 bg-red-900/40 hover:bg-red-800/60 text-red-400 font-bold rounded header-font text-xs border border-red-500/30 transition hover-juice data-lang" data-en="LEAVE LOBBY" data-ar="مغادرة الغرفة">LEAVE LOBBY</button>
             </div>
         </div>
     </div>
@@ -774,6 +789,8 @@
         let roomCompetitorsData = {};
         let peerInstance = null;
         let activeConnection = null;
+        let pendingPeerConnection = null;
+        let roundLocked = false;
         let multiplayerRole = "local";
         let currentRoomCode = null;
 
@@ -1035,6 +1052,32 @@
             }, 3200);
         }
 
+        function showPlayerJoinedToast(name) {
+            const container = document.getElementById("synergy-toast-container");
+            const labelStr = currentCulture === 'en' ? 'PLAYER JOINED' : 'انضم لاعب';
+
+            const toast = document.createElement("div");
+            toast.className = `w-full glass-panel border-amber-500/50 border-2 rounded-xl px-4 py-3 shadow-2xl anim-pop-in flex items-center gap-3 pointer-events-auto`;
+            toast.innerHTML = `
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                    <i class="fa-solid fa-user-plus text-amber-400"></i>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <p class="text-[10px] font-black text-amber-400 uppercase tracking-widest header-font">${labelStr}</p>
+                    <p class="text-sm font-black text-white header-font uppercase truncate">${name}</p>
+                </div>
+            `;
+            container.appendChild(toast);
+            playSFX();
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-12px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3200);
+        }
+
         // LOCAL STAT TRACKING LOGIC
         function updateLocalStats(score, finalSlotsObj) {
             let stats = JSON.parse(localStorage.getItem('heroMatrixStats') || '{"matches":0, "highScore":0, "drafts":{}}');
@@ -1119,8 +1162,39 @@ if(bestHeroId) {
             
             if(!isSelf && document.getElementById("chat-panel").classList.contains("chat-closed")) {
                 document.getElementById("chat-badge").classList.remove("hidden");
+                showChatMessageToast(user, msg);
                 playSFX(); 
             }
+        }
+
+        function showChatMessageToast(user, msg) {
+            const container = document.getElementById("synergy-toast-container");
+            const labelStr = currentCulture === 'en' ? 'NEW MESSAGE' : 'رسالة جديدة';
+
+            const toast = document.createElement("div");
+            toast.className = `w-full glass-panel border-blue-500/50 border-2 rounded-xl px-4 py-3 shadow-2xl anim-pop-in flex items-center gap-3 pointer-events-auto cursor-pointer`;
+            toast.innerHTML = `
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                    <i class="fa-solid fa-comment-dots text-blue-400"></i>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest header-font">${labelStr} — ${user}</p>
+                    <p class="text-sm font-bold text-white truncate">${msg}</p>
+                </div>
+            `;
+            toast.onclick = () => {
+                toast.remove();
+                const panel = document.getElementById("chat-panel");
+                if (panel.classList.contains("chat-closed")) toggleChatPanel();
+            };
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-12px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3200);
         }
 
         function toggleLanguageCulture() {
@@ -1360,6 +1434,7 @@ if(bestHeroId) {
         // --- CORE DRAFT RESET --- //
         function resetGameField(sendNetworkEvent = true, wipeLeaderboardScores = false) {
             assignedSlots = {};
+            roundLocked = false;
             triggeredSynergyNames.clear();
             selectedCharacter = null;
             activeBlitzCategoryId = null;
@@ -1685,6 +1760,7 @@ if(bestHeroId) {
 
         function executeCharacterCommit(categoryId, heroId) {
             assignedSlots[categoryId] = heroId;
+            roundLocked = true;
             checkForNewlyCompletedSynergies();
             const currentTotalSelections = Object.keys(assignedSlots).length;
             saveSessionState();
@@ -1980,10 +2056,22 @@ if(bestHeroId) {
             if(activeConnection) {
                 activeConnection.send({ type: "TRIGGER_AUTO_NEW_ROUND" });
             }
+            promotePendingPeerIfPossible();
+        }
+
+        // Brings a previously-queued joiner (HOLD_IN_QUEUE) into the room once it's safe to:
+        // either the peer slot is free, or a fresh round just started. Only relevant on the
+        // host's side, since that's the only side that ever holds a pending connection.
+        function promotePendingPeerIfPossible() {
+            if (!pendingPeerConnection || activeConnection || roundLocked) return;
+            activeConnection = pendingPeerConnection;
+            pendingPeerConnection = null;
+            setupNetworkTrafficChannels();
         }
 
         function executeAutoRoundReset() {
             assignedSlots = {};
+            roundLocked = false;
             triggeredSynergyNames.clear();
             selectedCharacter = null;
             activeBlitzCategoryId = null;
@@ -2076,6 +2164,25 @@ if(bestHeroId) {
                 document.getElementById("network-status-text").innerText = currentCulture === "en" ? "AWAITING TEAMMATE HANDSHAKE..." : "في انتظار اتصال اللاعب الآخر...";
                 
                 peerInstance.on('connection', (conn) => {
+                    if (activeConnection || roundLocked) {
+                        // Someone is already connected, or a round is actively being played --
+                        // hold this new arrival rather than letting them barge into an ongoing
+                        // draft. They're promoted automatically once the coast is clear (see
+                        // promotePendingPeerIfPossible()).
+                        pendingPeerConnection = conn;
+                        conn.on('open', () => {
+                            if (pendingPeerConnection !== conn) return; // superseded already
+                            const reason = roundLocked ? 'round' : 'mode';
+                            const waitMsg = roundLocked
+                                ? (currentCulture === 'en' ? "A round is already being played. You'll join automatically once it finishes and a new round starts." : "هناك جولة قيد اللعب حالياً. ستنضم تلقائياً بمجرد انتهائها وبدء جولة جديدة.")
+                                : (currentCulture === 'en' ? "The host already has a player connected. You'll join automatically once a spot opens up." : "يوجد لاعب متصل بالفعل مع المضيف. ستنضم تلقائياً بمجرد توفر مكان.");
+                            conn.send({ type: "HOLD_IN_QUEUE", reason: reason, message: waitMsg });
+                        });
+                        conn.on('close', () => {
+                            if (pendingPeerConnection === conn) pendingPeerConnection = null;
+                        });
+                        return;
+                    }
                     activeConnection = conn;
                     setupNetworkTrafficChannels();
                 });
@@ -2100,29 +2207,27 @@ if(bestHeroId) {
             if (targetId.length !== 6) return;
             
             multiplayerRole = "peer";
-            document.getElementById("btn-mode-standard").disabled = true;
-            document.getElementById("btn-mode-blitz").disabled = true;
-            document.getElementById("btn-mode-blind").disabled = true;
-            document.getElementById("btn-mode-sabotage").disabled = true;
-            
-            const dcBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'dc\')"]');
-            const marvelBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'marvel\')"]');
-            const waitingLabel = currentCulture === 'en' ? "WAITING FOR HOST..." : "بانتظار المضيف...";
-            if (dcBtn && !dcBtn.querySelector('.waiting-host-label')) {
-                dcBtn.disabled = true;
-                dcBtn.classList.add("opacity-40", "cursor-not-allowed", "pointer-events-none");
-                dcBtn.insertAdjacentHTML('beforeend', `<div class="waiting-host-label absolute inset-0 flex items-center justify-center bg-slate-950/80 rounded-xl"><span class="text-xs sm:text-sm font-black header-font text-white uppercase tracking-widest px-2 text-center">${waitingLabel}</span></div>`);
-            }
-            if (marvelBtn && !marvelBtn.querySelector('.waiting-host-label')) {
-                marvelBtn.disabled = true;
-                marvelBtn.classList.add("opacity-40", "cursor-not-allowed", "pointer-events-none");
-                marvelBtn.insertAdjacentHTML('beforeend', `<div class="waiting-host-label absolute inset-0 flex items-center justify-center bg-slate-950/80 rounded-xl"><span class="text-xs sm:text-sm font-black header-font text-white uppercase tracking-widest px-2 text-center">${waitingLabel}</span></div>`);
-            }
-            
+            showPeerWaitingPanel('mode', currentCulture === 'en' ? "The host is choosing a game mode and a universe. You'll join automatically the moment they start." : "يقوم المضيف باختيار طور اللعب والكون. ستنضم تلقائياً بمجرد أن يبدأ.");
+
             initPeerSystem(null, () => {
                 activeConnection = peerInstance.connect(targetId, { reliable: true });
                 setupNetworkTrafficChannels();
             });
+        }
+
+        // Swaps the setup screen from "pick a callsign / mode / universe" over to a single
+        // read-only waiting panel for a joining peer. `kind` just tags which flavor of waiting
+        // this is ('mode' = pre-game, 'round' = an existing round is still being played) so the
+        // right message shows; the actual text is passed in explicitly by the caller.
+        function showPeerWaitingPanel(kind, text) {
+            document.getElementById("setup-content-panel").classList.add("hidden");
+            const panel = document.getElementById("peer-waiting-panel");
+            panel.classList.remove("hidden");
+            panel.classList.add("flex");
+            document.getElementById("peer-waiting-title").innerText = kind === 'round'
+                ? (currentCulture === 'en' ? "Round In Progress" : "الجولة جارية الآن")
+                : (currentCulture === 'en' ? "Waiting for the Host" : "بانتظار المضيف");
+            document.getElementById("peer-waiting-subtext").innerText = text;
         }
 
         function setupNetworkTrafficChannels() {
@@ -2143,6 +2248,9 @@ if(bestHeroId) {
                 if (data.type === "HELLO_IDENTITY") {
                     roomCompetitorsData[data.user] = { progress: 0, score: null, finished: false, displayScore: null };
                     activeConnection.send({ type: "RESPOND_IDENTITY", user: localPlayerUser, dataState: roomCompetitorsData });
+                    if (multiplayerRole === "host") {
+                        showPlayerJoinedToast(data.user);
+                    }
                 } else if (data.type === "RESPOND_IDENTITY") {
                     Object.assign(roomCompetitorsData, data.dataState);
                 } else if (data.type === "LOBBY_STATE_UPDATE") {
@@ -2198,6 +2306,8 @@ if(bestHeroId) {
                     revertToSoloMode(currentCulture === 'en' ? "The host has removed you from the lobby. You'll continue on your own." : "قام المضيف بإزالتك من الغرفة. ستتابع اللعب بمفردك.");
                 } else if (data.type === "LOBBY_DISMANTLED") {
                     revertToSoloMode(currentCulture === 'en' ? "The host has closed the lobby. You'll continue on your own." : "أغلق المضيف الغرفة. ستتابع اللعب بمفردك.");
+                } else if (data.type === "HOLD_IN_QUEUE") {
+                    showPeerWaitingPanel(data.reason, data.message);
                 }
                 refreshScoreboardDisplay();
             });
@@ -2268,6 +2378,7 @@ if(bestHeroId) {
             updateLobbyControlVisibility();
             document.getElementById("host-controls").classList.add("hidden");
             checkAndExecuteAutoRoundMigration();
+            promotePendingPeerIfPossible();
             if (notify) alert(currentCulture === 'en' ? "The other player has left. Your room is still open for someone new to join, and you can continue." : "غادر اللاعب الآخر. غرفتك لا تزال مفتوحة لانضمام لاعب جديد، ويمكنك المتابعة.");
         }
 
@@ -2292,8 +2403,17 @@ if(bestHeroId) {
             const idDisplayOverlay = document.getElementById("host-id-display-overlay");
             if (idDisplayOverlay) idDisplayOverlay.classList.add("hidden");
 
-            // Restore the universe-selection buttons a joining peer had disabled/overlaid
-            // with a "waiting for host" banner, so a former peer can freely pick their own.
+            // Swap the setup screen back from the peer-waiting panel to the full
+            // callsign/mode/universe panel, fully re-enabled -- a single toggle instead of
+            // individually restoring each button (which is what caused mode/universe selection
+            // to stay stuck disabled after leaving or being kicked).
+            document.getElementById("peer-waiting-panel").classList.add("hidden");
+            document.getElementById("peer-waiting-panel").classList.remove("flex");
+            document.getElementById("setup-content-panel").classList.remove("hidden");
+            document.getElementById("btn-mode-standard").disabled = false;
+            document.getElementById("btn-mode-blitz").disabled = false;
+            document.getElementById("btn-mode-blind").disabled = false;
+            document.getElementById("btn-mode-sabotage").disabled = false;
             const dcBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'dc\')"]');
             const marvelBtn = document.querySelector('button[onclick="submitIdentityAndUniverse(\'marvel\')"]');
             [dcBtn, marvelBtn].forEach(btn => {
