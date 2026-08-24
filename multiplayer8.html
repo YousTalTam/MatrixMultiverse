@@ -534,16 +534,13 @@
         let globalBannedIds = [];
         let mySelectedBans = [];
         let myBansReady = false;
-        let opponentBans = [];
-        let opponentBansReady = false;
-        
+        let remoteBansData = {}; // { username: { bans: [...], ready: bool } } -- one entry per other connected player
+
         let myDraftReadyForSteal = false;
-        let opponentDraftReadyForSteal = false;
-        let opponentFinalSlots = {};
-        let mySelectedSteals = [];
+        let remoteFinalSlotsData = {}; // { username: { slots: {...}, ready: bool } }
+        let mySelectedSteals = []; // array of { category, fromPlayer }
         let myStealsReady = false;
-        let opponentSteals = [];
-        let opponentStealsReady = false;
+        let remoteStealsData = {}; // { username: { steals: [{category, fromPlayer}], ready: bool } }
 
         const catKeys = ["strength", "speed", "durability", "iq", "combat", "ability", "stamina", "agility", "bmv"];
 
@@ -788,9 +785,25 @@
         let localPlayerUser = "PLAYER_1";
         let roomCompetitorsData = {};
         let peerInstance = null;
-        let activeConnection = null;
-        let pendingPeerConnection = null;
+        let activeConnections = {}; // keyed by the remote peer's PeerJS id -- supports up to 7 connected peers (8 players total incl. host)
+        let pendingPeerConnections = [];
         let roundLocked = false;
+        const MAX_LOBBY_PLAYERS = 8;
+
+        function broadcastToPeers(data, excludeConnId = null) {
+            Object.entries(activeConnections).forEach(([id, conn]) => {
+                if (id === excludeConnId) return;
+                try { conn.send(data); } catch (e) {}
+            });
+        }
+        function getConnectedPeerCount() {
+            return Object.keys(activeConnections).length;
+        }
+        // A peer only ever holds one connection (to the host), so this doubles as
+        // "do I have a connection at all" for peer-side code that used to check activeConnection.
+        function hasAnyConnection() {
+            return getConnectedPeerCount() > 0;
+        }
         let multiplayerRole = "local";
         let currentRoomCode = null;
 
@@ -1143,9 +1156,7 @@ if(bestHeroId) {
             if(!msg) return;
             
             appendChatMessage(localPlayerUser, msg, true);
-            if(activeConnection) {
-                activeConnection.send({ type: "CHAT_MESSAGE", user: localPlayerUser, text: msg });
-            }
+            broadcastToPeers({ type: "CHAT_MESSAGE", user: localPlayerUser, text: msg });
             input.value = "";
         }
 
@@ -1243,8 +1254,8 @@ if(bestHeroId) {
             if(mode === 'blind') activeBtn.className = "p-3 rounded-lg text-left transition relative border-2 border-purple-500 bg-purple-950/20 hover-juice";
             if(mode === 'sabotage') activeBtn.className = "p-3 rounded-lg text-left transition relative border-2 border-emerald-500 bg-emerald-950/20 hover-juice";
 
-            if (activeConnection && multiplayerRole === "host") {
-                activeConnection.send({ type: "LOBBY_STATE_UPDATE", mode: gameMode });
+            if (multiplayerRole === "host") {
+                broadcastToPeers({ type: "LOBBY_STATE_UPDATE", mode: gameMode });
             }
         }
 
@@ -1296,8 +1307,8 @@ if(bestHeroId) {
                 modeTxt.className = "text-xs text-emerald-500 font-bold uppercase tracking-widest";
             }
 
-            if (syncOverNetwork && activeConnection) {
-                activeConnection.send({ type: "UNIVERSE_CHANGE", universe: key, user: localPlayerUser, mode: gameMode });
+            if (syncOverNetwork && multiplayerRole === "host") {
+                broadcastToPeers({ type: "UNIVERSE_CHANGE", universe: key, user: localPlayerUser, mode: gameMode });
             }
             if(gameMode === 'sabotage') {
                 openBanPhase();
@@ -1339,8 +1350,7 @@ if(bestHeroId) {
             globalBannedIds = [];
             mySelectedBans = [];
             myBansReady = false;
-            opponentBans = [];
-            opponentBansReady = false;
+            remoteBansData = {};
             document.getElementById("ban-count-display").innerText = "0";
             document.getElementById("ban-waiting-msg").classList.add("hidden");
             
@@ -1407,25 +1417,29 @@ if(bestHeroId) {
             myBansReady = true;
             document.getElementById("ban-waiting-msg").classList.remove("hidden");
             
-            if (activeConnection) {
-                activeConnection.send({ type: "BANS_READY", bans: mySelectedBans, user: localPlayerUser });
-            }
-            checkIfBothBansReady();
+            broadcastToPeers({ type: "BANS_READY", bans: mySelectedBans, user: localPlayerUser });
+            checkIfAllBansReady();
         }
 
-        function checkIfBothBansReady() {
-            if (!activeConnection || (myBansReady && opponentBansReady)) {
-                globalBannedIds = [...new Set([...mySelectedBans, ...opponentBans])];
+        function checkIfAllBansReady() {
+            const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
+            const readyCount = (myBansReady ? 1 : 0) + Object.values(remoteBansData).filter(p => p.ready).length;
+            document.getElementById("ban-waiting-msg").innerText = currentCulture === 'en'
+                ? `Waiting for other players... (${readyCount}/${totalPlayers} ready)`
+                : `بانتظار بقية اللاعبين... (${readyCount}/${totalPlayers} جاهز)`;
+
+            if (!hasAnyConnection() || readyCount >= totalPlayers) {
+                let allBans = [...mySelectedBans];
+                Object.values(remoteBansData).forEach(p => allBans.push(...(p.bans || [])));
+                globalBannedIds = [...new Set(allBans)];
                 document.getElementById("ban-overlay").classList.add("hidden");
                 document.getElementById("ban-overlay").classList.remove("flex");
                 
                 myDraftReadyForSteal = false;
-                opponentDraftReadyForSteal = false;
-                opponentFinalSlots = {};
+                remoteFinalSlotsData = {};
                 mySelectedSteals = [];
                 myStealsReady = false;
-                opponentSteals = [];
-                opponentStealsReady = false;
+                remoteStealsData = {};
                 
                 resetGameField(false, true); 
             }
@@ -1451,8 +1465,8 @@ if(bestHeroId) {
             
             regenerateFilteredPool();
             
-            if (sendNetworkEvent && activeConnection) {
-                activeConnection.send({ type: "FIELD_RESET", currentPoolIds: currentPool.map(c => c.id), user: localPlayerUser, clearAll: wipeLeaderboardScores });
+            if (sendNetworkEvent && multiplayerRole === "host") {
+                broadcastToPeers({ type: "FIELD_RESET", currentPoolIds: currentPool.map(c => c.id), user: localPlayerUser, clearAll: wipeLeaderboardScores });
             }
             
             renderPoolGrid();
@@ -1525,8 +1539,8 @@ if(bestHeroId) {
         function startBlitzRound() {
             if (multiplayerRole === "peer") return;
             blitzRoundActive = true;
-            if(activeConnection && multiplayerRole === "host") {
-                activeConnection.send({ type: "START_BLITZ_ROUND" });
+            if(multiplayerRole === "host") {
+                broadcastToPeers({ type: "START_BLITZ_ROUND" });
             }
             triggerBlitzTimer();
             renderPoolGrid();
@@ -1550,10 +1564,8 @@ if(bestHeroId) {
             selectedCharacter = penaltyCharacter;
             executeCharacterCommit(targetCategory.id, penaltyCharacter.id);
             
-            if(activeConnection) {
-                let poolToSend = gameMode === 'blitz' ? [] : currentPool.map(c=>c.id);
-                activeConnection.send({ type: "COMMIT_HERO", categoryId: targetCategory.id, heroId: penaltyCharacter.id, currentPoolIds: poolToSend, user: localPlayerUser, progress: Object.keys(assignedSlots).length });
-            }
+            let poolToSend = gameMode === 'blitz' ? [] : currentPool.map(c=>c.id);
+            broadcastToPeers({ type: "COMMIT_HERO", categoryId: targetCategory.id, heroId: penaltyCharacter.id, currentPoolIds: poolToSend, user: localPlayerUser, progress: Object.keys(assignedSlots).length });
         }
 
         function renderPoolGrid() {
@@ -1614,8 +1626,8 @@ if(bestHeroId) {
                     if (gameMode === 'blitz') {
                         if (activeBlitzCategoryId) {
                             executeCharacterCommit(activeBlitzCategoryId, char.id);
-                            if(activeConnection) {
-                                activeConnection.send({ type: "COMMIT_HERO", categoryId: activeBlitzCategoryId, heroId: char.id, currentPoolIds: [], user: localPlayerUser, progress: Object.keys(assignedSlots).length });
+                            broadcastToPeers({ type: "COMMIT_HERO", categoryId: activeBlitzCategoryId, heroId: char.id, currentPoolIds: [], user: localPlayerUser, progress: Object.keys(assignedSlots).length });
+                            if(false) {
                             }
                         }
                     } else {
@@ -1745,10 +1757,8 @@ if(bestHeroId) {
                             }
                             playSFX();
                             executeCharacterCommit(cat.id, selectedCharacter.id);
-                            if(activeConnection) {
-                                let poolToSend = gameMode === 'blitz' ? [] : currentPool.map(c=>c.id);
-                                activeConnection.send({ type: "COMMIT_HERO", categoryId: cat.id, heroId: selectedCharacter.id, currentPoolIds: poolToSend, user: localPlayerUser, progress: Object.keys(assignedSlots).length });
-                            }
+                            let poolToSend = gameMode === 'blitz' ? [] : currentPool.map(c=>c.id);
+                            broadcastToPeers({ type: "COMMIT_HERO", categoryId: cat.id, heroId: selectedCharacter.id, currentPoolIds: poolToSend, user: localPlayerUser, progress: Object.keys(assignedSlots).length });
                         };
                     } else {
                         node.innerHTML += `<div class="w-full mt-3 py-1 bg-slate-900/50 border border-slate-800 text-slate-600 text-[10px] font-bold rounded uppercase tracking-widest header-font text-center">${currentCulture === 'en' ? 'LOCKED' : 'مغلق'}</div>`;
@@ -1780,9 +1790,7 @@ if(bestHeroId) {
                 clearBlitzTimer();
                 if (gameMode === 'sabotage') {
                     myDraftReadyForSteal = true;
-                    if (activeConnection) {
-                        activeConnection.send({ type: "DRAFT_COMPLETE", finalSlots: assignedSlots, user: localPlayerUser });
-                    }
+                    broadcastToPeers({ type: "DRAFT_COMPLETE", finalSlots: assignedSlots, user: localPlayerUser });
                     checkIfDraftsReadyForSteal();
                 } else {
                     processAggregation();
@@ -1796,7 +1804,9 @@ if(bestHeroId) {
 
         // --- SABOTAGE: STEAL PHASE --- //
         function checkIfDraftsReadyForSteal() {
-            if (!activeConnection || (myDraftReadyForSteal && opponentDraftReadyForSteal)) {
+            const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
+            const readyCount = (myDraftReadyForSteal ? 1 : 0) + Object.values(remoteFinalSlotsData).filter(p => p.ready).length;
+            if (!hasAnyConnection() || readyCount >= totalPlayers) {
                 openStealPhase();
             }
         }
@@ -1809,46 +1819,54 @@ if(bestHeroId) {
             
             const grid = document.getElementById("steal-grid");
             grid.innerHTML = "";
-            const db = databases[activeUniverseKey];
-            
-            categories.forEach((cat, index) => {
-                let heroId = opponentFinalSlots[cat.id];
-                if (!heroId) return;
-                
+            let optionIndex = 0;
+            let anyOptions = false;
+
+            categories.forEach((cat) => {
                 const catName = currentCulture === "en" ? cat.name : cat.nameAr;
                 const hiddenName = currentCulture === "en" ? "UNKNOWN HERO" : "بطل مجهول";
-                
-                const btn = document.createElement("button");
-                btn.className = `p-3 rounded-xl bg-slate-900 border border-slate-800 text-left hover:border-red-500 transition relative overflow-hidden anim-fade-up hover-juice`;
-                btn.style.animationDelay = `${index * 0.05}s`;
-                btn.style.opacity = '0';
-                btn.id = `steal-btn-${cat.id}`;
-                btn.innerHTML = `
-                    <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-slate-700 to-slate-900"></div>
-                    <div class="text-[10px] text-slate-500 uppercase font-bold header-font mb-1"><i class="${cat.icon} mr-1"></i>${catName}</div>
-                    <div class="text-sm font-bold text-slate-400 header-font"><i class="fa-solid fa-question text-xs text-slate-500 mr-1"></i>${hiddenName}</div>
-                    <div class="mt-2 text-[10px] font-black uppercase text-slate-600 bg-slate-950 inline-block px-1.5 py-0.5 rounded border border-slate-800">WEIGHT: ???</div>
-                `;
-                btn.onclick = () => toggleStealSelection(cat.id, btn);
-                grid.appendChild(btn);
+
+                Object.keys(remoteFinalSlotsData).forEach(rivalName => {
+                    const rivalSlots = (remoteFinalSlotsData[rivalName] && remoteFinalSlotsData[rivalName].slots) || {};
+                    const heroId = rivalSlots[cat.id];
+                    if (!heroId) return;
+                    anyOptions = true;
+
+                    const btn = document.createElement("button");
+                    btn.className = `p-3 rounded-xl bg-slate-900 border border-slate-800 text-left hover:border-red-500 transition relative overflow-hidden anim-fade-up hover-juice`;
+                    btn.style.animationDelay = `${(optionIndex++) * 0.03}s`;
+                    btn.style.opacity = '0';
+                    btn.id = `steal-btn-${cat.id}-${rivalName}`;
+                    btn.innerHTML = `
+                        <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-slate-700 to-slate-900"></div>
+                        <div class="text-[10px] text-slate-500 uppercase font-bold header-font mb-1"><i class="${cat.icon} mr-1"></i>${catName}</div>
+                        <div class="text-sm font-bold text-slate-400 header-font"><i class="fa-solid fa-question text-xs text-slate-500 mr-1"></i>${hiddenName}</div>
+                        <div class="mt-1 text-[10px] font-black uppercase text-red-400/80 truncate">${currentCulture === 'en' ? 'FROM' : 'من'}: ${rivalName}</div>
+                        <div class="mt-2 text-[10px] font-black uppercase text-slate-600 bg-slate-950 inline-block px-1.5 py-0.5 rounded border border-slate-800">WEIGHT: ???</div>
+                    `;
+                    btn.onclick = () => toggleStealSelection(cat.id, rivalName, btn);
+                    grid.appendChild(btn);
+                });
             });
 
-            if(!activeConnection || Object.keys(opponentFinalSlots).length === 0) {
+            if (!anyOptions) {
                 grid.innerHTML = `<div class="col-span-full text-center text-slate-500 font-bold uppercase header-font text-xs p-4">${currentCulture==='en'?'NO OPPONENT DETECTED IN LOCAL MODE':'لا يوجد خصم متصل في هذا الطور'}</div>`;
             }
         }
 
-        function toggleStealSelection(catId, btnElement) {
+        function toggleStealSelection(catId, fromPlayer, btnElement) {
             if(myStealsReady) return;
             playSFX();
-            const idx = mySelectedSteals.indexOf(catId);
+            const idx = mySelectedSteals.findIndex(s => s.category === catId && s.fromPlayer === fromPlayer);
             if(idx > -1) {
                 mySelectedSteals.splice(idx, 1);
                 btnElement.classList.replace("border-red-500", "border-slate-800");
                 btnElement.classList.replace("bg-red-950/40", "bg-slate-900");
             } else {
-                if(mySelectedSteals.length >= 2) return; 
-                mySelectedSteals.push(catId);
+                if(mySelectedSteals.length >= 2) return;
+                // Only one steal per category -- can't fill the same slot from two different rivals
+                if (mySelectedSteals.some(s => s.category === catId)) return;
+                mySelectedSteals.push({ category: catId, fromPlayer: fromPlayer });
                 btnElement.classList.replace("border-slate-800", "border-red-500");
                 btnElement.classList.replace("bg-slate-900", "bg-red-950/40");
             }
@@ -1862,18 +1880,25 @@ if(bestHeroId) {
             myStealsReady = true;
             document.getElementById("steal-waiting-msg").classList.remove("hidden");
             
-            if (activeConnection) {
-                activeConnection.send({ type: "STEALS_READY", steals: mySelectedSteals, user: localPlayerUser });
-            }
-            checkIfBothStealsReady();
+            broadcastToPeers({ type: "STEALS_READY", steals: mySelectedSteals, user: localPlayerUser });
+            checkIfAllStealsReady();
         }
 
-        function checkIfBothStealsReady() {
-            if (!activeConnection || (myStealsReady && opponentStealsReady)) {
-                let swapCats = [...new Set([...mySelectedSteals, ...opponentSteals])];
-                swapCats.forEach(cat => {
-                    if (assignedSlots[cat] && opponentFinalSlots[cat]) {
-                        assignedSlots[cat] = opponentFinalSlots[cat];
+        function checkIfAllStealsReady() {
+            const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
+            const readyCount = (myStealsReady ? 1 : 0) + Object.values(remoteStealsData).filter(p => p.ready).length;
+            document.getElementById("steal-waiting-msg").innerText = currentCulture === 'en'
+                ? `Waiting for other players... (${readyCount}/${totalPlayers} ready)`
+                : `بانتظار بقية اللاعبين... (${readyCount}/${totalPlayers} جاهز)`;
+
+            if (!hasAnyConnection() || readyCount >= totalPlayers) {
+                // Each player only ever writes to their OWN assignedSlots, reading from an
+                // immutable snapshot (remoteFinalSlotsData) taken before any steals applied --
+                // so there's no cross-player write conflict to resolve here.
+                mySelectedSteals.forEach(steal => {
+                    const victim = remoteFinalSlotsData[steal.fromPlayer];
+                    if (victim && victim.slots && victim.slots[steal.category]) {
+                        assignedSlots[steal.category] = victim.slots[steal.category];
                     }
                 });
                 document.getElementById("steal-overlay").classList.add("hidden");
@@ -1988,9 +2013,7 @@ if(bestHeroId) {
                 roomCompetitorsData[localPlayerUser].score = computedScoreOutOf100;
                 roomCompetitorsData[localPlayerUser].finished = true;
             }
-            if(activeConnection) {
-                activeConnection.send({ type: "SCORE_SYNC", user: localPlayerUser, score: computedScoreOutOf100 });
-            }
+            broadcastToPeers({ type: "SCORE_SYNC", user: localPlayerUser, score: computedScoreOutOf100 });
             
             document.getElementById("final-numerical-score").innerText = computedScoreOutOf100;
             
@@ -2053,20 +2076,20 @@ if(bestHeroId) {
         function hostStartNextRound() {
             document.getElementById("host-controls").classList.add("hidden");
             if(gameMode === 'sabotage') { openBanPhase(); } else { executeAutoRoundReset(); }
-            if(activeConnection) {
-                activeConnection.send({ type: "TRIGGER_AUTO_NEW_ROUND" });
-            }
-            promotePendingPeerIfPossible();
+            broadcastToPeers({ type: "TRIGGER_AUTO_NEW_ROUND" });
+            promotePendingPeersIfPossible();
         }
 
-        // Brings a previously-queued joiner (HOLD_IN_QUEUE) into the room once it's safe to:
-        // either the peer slot is free, or a fresh round just started. Only relevant on the
-        // host's side, since that's the only side that ever holds a pending connection.
-        function promotePendingPeerIfPossible() {
-            if (!pendingPeerConnection || activeConnection || roundLocked) return;
-            activeConnection = pendingPeerConnection;
-            pendingPeerConnection = null;
-            setupNetworkTrafficChannels();
+        // Brings previously-queued joiners (HOLD_IN_QUEUE) into the room once it's safe to --
+        // once the round isn't locked, promotes as many as fit under the 8-player cap. Only
+        // relevant on the host's side, since that's the only side that ever holds a queue.
+        function promotePendingPeersIfPossible() {
+            if (roundLocked) return;
+            while (pendingPeerConnections.length > 0 && (1 + getConnectedPeerCount()) < MAX_LOBBY_PLAYERS) {
+                const conn = pendingPeerConnections.shift();
+                activeConnections[conn.peer] = conn;
+                setupNetworkTrafficChannels(conn);
+            }
         }
 
         function executeAutoRoundReset() {
@@ -2080,15 +2103,12 @@ if(bestHeroId) {
             globalBannedIds = [];
             mySelectedBans = [];
             myBansReady = false;
-            opponentBans = [];
-            opponentBansReady = false;
+            remoteBansData = {};
             myDraftReadyForSteal = false;
-            opponentDraftReadyForSteal = false;
-            opponentFinalSlots = {};
+            remoteFinalSlotsData = {};
             mySelectedSteals = [];
             myStealsReady = false;
-            opponentSteals = [];
-            opponentStealsReady = false;
+            remoteStealsData = {};
             
             Object.keys(roomCompetitorsData).forEach(u => {
                 roomCompetitorsData[u].progress = 0;
@@ -2164,27 +2184,31 @@ if(bestHeroId) {
                 document.getElementById("network-status-text").innerText = currentCulture === "en" ? "AWAITING TEAMMATE HANDSHAKE..." : "في انتظار اتصال اللاعب الآخر...";
                 
                 peerInstance.on('connection', (conn) => {
-                    if (activeConnection || roundLocked) {
-                        // Someone is already connected, or a round is actively being played --
-                        // hold this new arrival rather than letting them barge into an ongoing
-                        // draft. They're promoted automatically once the coast is clear (see
-                        // promotePendingPeerIfPossible()).
-                        pendingPeerConnection = conn;
+                    const totalIfAccepted = 1 + getConnectedPeerCount() + 1; // host + existing peers + this new one
+                    if (totalIfAccepted > MAX_LOBBY_PLAYERS || roundLocked) {
+                        // Lobby is full, or a round is actively being played -- hold this new
+                        // arrival rather than letting them barge into an ongoing draft or push
+                        // the room past capacity. They're promoted automatically once room opens
+                        // up (see promotePendingPeersIfPossible()).
+                        pendingPeerConnections.push(conn);
                         conn.on('open', () => {
-                            if (pendingPeerConnection !== conn) return; // superseded already
-                            const reason = roundLocked ? 'round' : 'mode';
+                            if (!pendingPeerConnections.includes(conn)) return; // already promoted/superseded
+                            const isFull = totalIfAccepted > MAX_LOBBY_PLAYERS;
+                            const reason = roundLocked ? 'round' : (isFull ? 'full' : 'mode');
                             const waitMsg = roundLocked
                                 ? (currentCulture === 'en' ? "A round is already being played. You'll join automatically once it finishes and a new round starts." : "هناك جولة قيد اللعب حالياً. ستنضم تلقائياً بمجرد انتهائها وبدء جولة جديدة.")
+                                : isFull
+                                ? (currentCulture === 'en' ? `This lobby is full (${MAX_LOBBY_PLAYERS} players max). You'll join automatically the moment a spot opens up.` : `هذه الغرفة ممتلئة (الحد الأقصى ${MAX_LOBBY_PLAYERS} لاعبين). ستنضم تلقائياً بمجرد توفر مكان.`)
                                 : (currentCulture === 'en' ? "The host already has a player connected. You'll join automatically once a spot opens up." : "يوجد لاعب متصل بالفعل مع المضيف. ستنضم تلقائياً بمجرد توفر مكان.");
                             conn.send({ type: "HOLD_IN_QUEUE", reason: reason, message: waitMsg });
                         });
                         conn.on('close', () => {
-                            if (pendingPeerConnection === conn) pendingPeerConnection = null;
+                            pendingPeerConnections = pendingPeerConnections.filter(c => c !== conn);
                         });
                         return;
                     }
-                    activeConnection = conn;
-                    setupNetworkTrafficChannels();
+                    activeConnections[conn.peer] = conn;
+                    setupNetworkTrafficChannels(conn);
                 });
             });
         }
@@ -2210,8 +2234,9 @@ if(bestHeroId) {
             showPeerWaitingPanel('mode', currentCulture === 'en' ? "The host is choosing a game mode and a universe. You'll join automatically the moment they start." : "يقوم المضيف باختيار طور اللعب والكون. ستنضم تلقائياً بمجرد أن يبدأ.");
 
             initPeerSystem(null, () => {
-                activeConnection = peerInstance.connect(targetId, { reliable: true });
-                setupNetworkTrafficChannels();
+                const conn = peerInstance.connect(targetId, { reliable: true });
+                activeConnections[targetId] = conn;
+                setupNetworkTrafficChannels(conn);
             });
         }
 
@@ -2230,24 +2255,34 @@ if(bestHeroId) {
             document.getElementById("peer-waiting-subtext").innerText = text;
         }
 
-        function setupNetworkTrafficChannels() {
-            activeConnection.on('open', () => {
+        function setupNetworkTrafficChannels(conn) {
+            conn.on('open', () => {
                 setNetworkDisplayConnected();
                 updateLobbyControlVisibility();
-                activeConnection.send({ type: "HELLO_IDENTITY", user: localPlayerUser });
+                conn.send({ type: "HELLO_IDENTITY", user: localPlayerUser });
                 if (multiplayerRole === "host") {
-                    activeConnection.send({ type: "INIT_SYNC", universe: activeUniverseKey, mode: gameMode, poolIds: currentPool.map(c=>c.id), user: localPlayerUser });
+                    conn.send({ type: "INIT_SYNC", universe: activeUniverseKey, mode: gameMode, poolIds: currentPool.map(c=>c.id), user: localPlayerUser });
                 }
             });
             
-            activeConnection.on('data', (data) => {
+            conn.on('data', (data) => {
                 if(data.user && !roomCompetitorsData[data.user]) {
                     roomCompetitorsData[data.user] = { progress: 0, score: null, finished: false, displayScore: null };
+                }
+
+                // Relay peer-originated events to every OTHER connected peer. Peers only ever
+                // connect to the host (hub-and-spoke), never to each other, so the host is the
+                // only one who can pass an event along -- and since every payload already
+                // carries the original sender's identity in `user`, it can be forwarded as-is.
+                const relayTypes = ["HELLO_IDENTITY", "COMMIT_HERO", "BANS_READY", "DRAFT_COMPLETE", "STEALS_READY", "SCORE_SYNC", "CHAT_MESSAGE"];
+                if (multiplayerRole === "host" && relayTypes.includes(data.type)) {
+                    broadcastToPeers(data, conn.peer);
                 }
                 
                 if (data.type === "HELLO_IDENTITY") {
                     roomCompetitorsData[data.user] = { progress: 0, score: null, finished: false, displayScore: null };
-                    activeConnection.send({ type: "RESPOND_IDENTITY", user: localPlayerUser, dataState: roomCompetitorsData });
+                    conn.__username = data.user;
+                    conn.send({ type: "RESPOND_IDENTITY", user: localPlayerUser, dataState: roomCompetitorsData });
                     if (multiplayerRole === "host") {
                         showPlayerJoinedToast(data.user);
                     }
@@ -2277,17 +2312,20 @@ if(bestHeroId) {
                         roomCompetitorsData[data.user].progress = data.progress || 0;
                     }
                 } else if (data.type === "BANS_READY") {
-                    opponentBans = data.bans || [];
-                    opponentBansReady = true;
-                    checkIfBothBansReady();
+                    if (!remoteBansData[data.user]) remoteBansData[data.user] = {};
+                    remoteBansData[data.user].bans = data.bans || [];
+                    remoteBansData[data.user].ready = true;
+                    checkIfAllBansReady();
                 } else if (data.type === "DRAFT_COMPLETE") {
-                    opponentFinalSlots = data.finalSlots || {};
-                    opponentDraftReadyForSteal = true;
+                    if (!remoteFinalSlotsData[data.user]) remoteFinalSlotsData[data.user] = {};
+                    remoteFinalSlotsData[data.user].slots = data.finalSlots || {};
+                    remoteFinalSlotsData[data.user].ready = true;
                     checkIfDraftsReadyForSteal();
                 } else if (data.type === "STEALS_READY") {
-                    opponentSteals = data.steals || [];
-                    opponentStealsReady = true;
-                    checkIfBothStealsReady();
+                    if (!remoteStealsData[data.user]) remoteStealsData[data.user] = {};
+                    remoteStealsData[data.user].steals = data.steals || [];
+                    remoteStealsData[data.user].ready = true;
+                    checkIfAllStealsReady();
                 } else if (data.type === "SCORE_SYNC") {
                     if(roomCompetitorsData[data.user]) {
                         roomCompetitorsData[data.user].score = data.score;
@@ -2308,24 +2346,26 @@ if(bestHeroId) {
                     revertToSoloMode(currentCulture === 'en' ? "The host has closed the lobby. You'll continue on your own." : "أغلق المضيف الغرفة. ستتابع اللعب بمفردك.");
                 } else if (data.type === "HOLD_IN_QUEUE") {
                     showPeerWaitingPanel(data.reason, data.message);
+                } else if (data.type === "PLAYER_LEFT") {
+                    delete roomCompetitorsData[data.user];
+                    delete remoteBansData[data.user];
+                    delete remoteFinalSlotsData[data.user];
+                    delete remoteStealsData[data.user];
+                    checkAndExecuteAutoRoundMigration();
                 }
                 refreshScoreboardDisplay();
             });
             
-            activeConnection.on('close', () => {
-                if (multiplayerRole === "host") {
-                    handlePeerLeftRoom(true);
-                } else if (multiplayerRole === "peer") {
-                    revertToSoloMode(currentCulture === 'en' ? "Lost connection to the host. Switched to solo mode." : "انقطع الاتصال بالمضيف. تم التحول إلى وضع اللعب الفردي.");
-                }
-            });
-            activeConnection.on('error', () => {
-                if (multiplayerRole === "host") {
-                    handlePeerLeftRoom(true);
-                } else if (multiplayerRole === "peer") {
-                    revertToSoloMode(currentCulture === 'en' ? "Lost connection to the host. Switched to solo mode." : "انقطع الاتصال بالمضيف. تم التحول إلى وضع اللعب الفردي.");
-                }
-            });
+            conn.on('close', () => { handleSingleConnectionDropped(conn); });
+            conn.on('error', () => { handleSingleConnectionDropped(conn); });
+        }
+
+        function handleSingleConnectionDropped(conn) {
+            if (multiplayerRole === "host") {
+                handlePeerLeftRoom(conn, true);
+            } else if (multiplayerRole === "peer") {
+                revertToSoloMode(currentCulture === 'en' ? "Lost connection to the host. Switched to solo mode." : "انقطع الاتصال بالمضيف. تم التحول إلى وضع اللعب الفردي.");
+            }
         }
 
         // --- LOBBY MANAGEMENT: kick / dismantle / leave --- //
@@ -2333,24 +2373,32 @@ if(bestHeroId) {
             const kickBtn = document.getElementById("btn-kick-player");
             const dismantleBtn = document.getElementById("btn-dismantle-lobby");
             const leaveBtn = document.getElementById("btn-leave-lobby");
-            if (kickBtn) kickBtn.classList.toggle("hidden", !(multiplayerRole === 'host' && activeConnection));
+            if (kickBtn) kickBtn.classList.toggle("hidden", !(multiplayerRole === 'host' && getConnectedPeerCount() > 0));
             if (dismantleBtn) dismantleBtn.classList.toggle("hidden", multiplayerRole !== 'host');
             if (leaveBtn) leaveBtn.classList.toggle("hidden", multiplayerRole !== 'peer');
         }
 
         function kickPeerPlayer() {
-            if (multiplayerRole !== 'host' || !activeConnection) return;
-            if (!confirm(currentCulture === 'en' ? "Remove this player from the lobby?" : "هل تريد إزالة هذا اللاعب من الغرفة؟")) return;
-            try { activeConnection.send({ type: "KICKED_FROM_LOBBY" }); } catch (e) {}
-            setTimeout(() => handlePeerLeftRoom(false), 150);
+            if (multiplayerRole !== 'host' || getConnectedPeerCount() === 0) return;
+            const connList = Object.values(activeConnections);
+            let target = connList[0];
+            if (connList.length > 1) {
+                const names = connList.map(c => c.__username || c.peer).join(', ');
+                const chosen = prompt(currentCulture === 'en' ? `Type the exact callsign to remove:\n${names}` : `اكتب اسم اللاعب المراد إزالته بالضبط:\n${names}`);
+                if (!chosen) return;
+                target = connList.find(c => (c.__username || '').toUpperCase() === chosen.trim().toUpperCase());
+                if (!target) { alert(currentCulture === 'en' ? "No matching player found." : "لم يتم العثور على لاعب مطابق."); return; }
+            }
+            const targetName = target.__username || (currentCulture === 'en' ? "this player" : "هذا اللاعب");
+            if (!confirm(currentCulture === 'en' ? `Remove ${targetName} from the lobby?` : `هل تريد إزالة ${targetName} من الغرفة؟`)) return;
+            try { target.send({ type: "KICKED_FROM_LOBBY" }); } catch (e) {}
+            setTimeout(() => handlePeerLeftRoom(target, false), 150);
         }
 
         function dismantleLobbyRoom() {
             if (multiplayerRole !== 'host') return;
-            if (!confirm(currentCulture === 'en' ? "Shut down the entire lobby? Any joined player will continue on their own." : "هل تريد إغلاق الغرفة بالكامل؟ أي لاعب منضم سيتابع اللعب بمفرده.")) return;
-            if (activeConnection) {
-                try { activeConnection.send({ type: "LOBBY_DISMANTLED" }); } catch (e) {}
-            }
+            if (!confirm(currentCulture === 'en' ? "Shut down the entire lobby? Any joined players will continue on their own." : "هل تريد إغلاق الغرفة بالكامل؟ أي لاعبين منضمين سيتابعون اللعب بمفردهم.")) return;
+            broadcastToPeers({ type: "LOBBY_DISMANTLED" });
             setTimeout(() => revertToSoloMode(), 150);
         }
 
@@ -2360,34 +2408,52 @@ if(bestHeroId) {
             revertToSoloMode();
         }
 
-        // Called on the HOST's side whenever the connected peer goes away (voluntarily left,
+        // Called on the HOST's side whenever ONE connected peer goes away (voluntarily left,
         // was kicked, or disconnected unexpectedly). The room itself (peerInstance) stays open
-        // and joinable by someone new -- only Dismantle Lobby fully closes it. This also clears
-        // the departed player's stale entry from roomCompetitorsData, which is what actually
-        // unsticks round-completion: without this, "every player finished" could never become
-        // true again once someone left mid-round, permanently blocking the remaining player.
-        function handlePeerLeftRoom(notify) {
-            if (activeConnection) { try { activeConnection.close(); } catch (e) {} }
-            activeConnection = null;
-            Object.keys(roomCompetitorsData).forEach(k => {
-                if (k !== localPlayerUser) delete roomCompetitorsData[k];
-            });
-            document.getElementById("sync-dot").className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500";
-            document.getElementById("sync-ping").className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
-            document.getElementById("network-status-text").innerText = currentCulture === "en" ? "PLAYER LEFT - ROOM STILL OPEN" : "غادر اللاعب - الغرفة لا تزال مفتوحة";
+        // and joinable by others -- only Dismantle Lobby fully closes it. This also clears just
+        // that departed player's stale entry from roomCompetitorsData (and notifies everyone
+        // else still connected so their rosters match), which is what actually unsticks
+        // round-completion: without this, "every player finished" could never become true again
+        // once someone left mid-round, permanently blocking whoever remained.
+        function handlePeerLeftRoom(conn, notify) {
+            const departedName = conn && conn.__username;
+            if (conn) {
+                try { conn.close(); } catch (e) {}
+                delete activeConnections[conn.peer];
+            }
+            if (departedName) {
+                delete roomCompetitorsData[departedName];
+                delete remoteBansData[departedName];
+                delete remoteFinalSlotsData[departedName];
+                delete remoteStealsData[departedName];
+                broadcastToPeers({ type: "PLAYER_LEFT", user: departedName });
+            }
+            const remaining = getConnectedPeerCount();
+            const dotColor = remaining > 0 ? "emerald" : "amber";
+            document.getElementById("sync-dot").className = `relative inline-flex rounded-full h-2.5 w-2.5 bg-${dotColor}-500`;
+            document.getElementById("sync-ping").className = `animate-ping absolute inline-flex h-full w-full rounded-full bg-${dotColor}-400 opacity-75`;
+            document.getElementById("network-status-text").innerText = remaining > 0
+                ? (currentCulture === 'en' ? `${remaining + 1} PLAYERS CONNECTED` : `${remaining + 1} لاعبين متصلين`)
+                : (currentCulture === 'en' ? "PLAYER LEFT - ROOM STILL OPEN" : "غادر اللاعب - الغرفة لا تزال مفتوحة");
             updateLobbyControlVisibility();
             document.getElementById("host-controls").classList.add("hidden");
             checkAndExecuteAutoRoundMigration();
-            promotePendingPeerIfPossible();
-            if (notify) alert(currentCulture === 'en' ? "The other player has left. Your room is still open for someone new to join, and you can continue." : "غادر اللاعب الآخر. غرفتك لا تزال مفتوحة لانضمام لاعب جديد، ويمكنك المتابعة.");
+            promotePendingPeersIfPossible();
+            if (notify) {
+                const who = departedName || (currentCulture === 'en' ? "A player" : "أحد اللاعبين");
+                alert(currentCulture === 'en' ? `${who} has left. Your room is still open, and you can continue.` : `غادر ${who}. غرفتك لا تزال مفتوحة، ويمكنك المتابعة.`);
+            }
         }
 
-        // Fully reverts THIS client to solo mode. Used when a peer leaves/is kicked/loses the
-        // host, and when a host explicitly dismantles their own room.
+        // Fully reverts THIS client to solo mode: closes every connection (accepted and
+        // queued), tears down the peer server if hosting, and used when a peer leaves/is
+        // kicked/loses the host, and when a host explicitly dismantles their own room.
         function revertToSoloMode(message) {
-            if (activeConnection) { try { activeConnection.close(); } catch (e) {} }
+            Object.values(activeConnections).forEach(c => { try { c.close(); } catch (e) {} });
+            activeConnections = {};
+            pendingPeerConnections.forEach(c => { try { c.close(); } catch (e) {} });
+            pendingPeerConnections = [];
             if (peerInstance) { try { peerInstance.destroy(); } catch (e) {} peerInstance = null; }
-            activeConnection = null;
             multiplayerRole = "local";
             roomCompetitorsData = {};
             if (localPlayerUser) {
@@ -2444,7 +2510,7 @@ if(bestHeroId) {
 
         function setNetworkDisplayDisconnected() {
             multiplayerRole = "local";
-            activeConnection = null;
+            activeConnections = {};
             document.getElementById("sync-dot").className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-600";
             document.getElementById("sync-ping").className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-500 opacity-75";
             document.getElementById("network-status-text").innerText = currentCulture === "en" ? "MULTIPLAYER DISCONNECTED" : "وضع اللعب الجماعي غير متصل";
