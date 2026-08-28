@@ -325,20 +325,44 @@
         <div class="w-full max-w-4xl glass-panel p-6 rounded-2xl border border-emerald-500/30 flex flex-col gap-4 max-h-[95vh] overflow-hidden anim-pop-in">
             <div class="text-center">
                 <h2 class="text-lg sm:text-2xl font-black header-font text-emerald-400 uppercase data-lang" data-en="SABOTAGE PROTOCOL: BAN PHASE" data-ar="بروتوكول التخريب: مرحلة الحظر">SABOTAGE PROTOCOL: BAN PHASE</h2>
-                <p class="text-xs text-slate-400 mt-1 data-lang" data-en="Select up to 8 characters to ban from this match. Your opponent is doing the same." data-ar="اختر حتى 8 شخصيات لحظرها من هذه المباراة. خصمك يقوم بنفس الشيء.">Select up to 8 characters to ban from this match. Your opponent is doing the same.</p>
+                <p id="ban-turn-indicator" class="text-sm font-black header-font mt-2 uppercase"></p>
+                <div id="ban-timer-bar-wrap" class="hidden w-full max-w-xs mx-auto mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="ban-timer-bar" class="h-full bg-emerald-500" style="width:100%"></div>
+                </div>
                 <div class="mt-3 inline-block bg-slate-900 border border-slate-800 px-4 py-1 rounded-full">
-                    <span class="text-sm font-bold text-white header-font"><span id="ban-count-display">0</span> / 8</span>
+                    <span class="text-sm font-bold text-white header-font"><span id="ban-count-display">0</span> / <span id="ban-count-total">0</span></span>
                     <span class="text-xs text-slate-500 uppercase data-lang" data-en="BANNED" data-ar="محظور">BANNED</span>
                 </div>
             </div>
             <div id="ban-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2 overflow-y-auto custom-scroll p-2 border border-slate-800 rounded bg-slate-950/50 flex-grow">
             </div>
-            <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-4">
-                <button onclick="confirmBans(true)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-sm header-font border border-slate-700 transition hover-juice data-lang" data-en="PASS (NO BANS)" data-ar="تخطي (بدون حظر)">PASS (NO BANS)</button>
-                <div class="flex items-center gap-3">
-                    <span id="ban-waiting-msg" class="text-xs text-amber-500 font-bold hidden animate-pulse data-lang" data-en="WAITING FOR OPPONENT..." data-ar="بانتظار الخصم...">WAITING FOR OPPONENT...</span>
-                    <button onclick="confirmBans(false)" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded text-sm header-font tracking-wider transition hover-juice data-lang" data-en="LOCK BANS" data-ar="تأكيد الحظر">LOCK BANS</button>
-                </div>
+            <div class="flex justify-center items-center mt-2 border-t border-slate-800 pt-4">
+                <button id="btn-pass-ban-turn" onclick="passBanTurn()" class="hidden px-6 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-sm header-font border border-slate-700 transition hover-juice data-lang" data-en="PASS THIS BAN" data-ar="تخطي هذا الحظر">PASS THIS BAN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto popup shown to everyone right after the ban phase concludes, before drafting starts -->
+    <div id="post-ban-summary-overlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[65] hidden items-center justify-center p-4">
+        <div class="w-full max-w-2xl glass-panel p-6 rounded-2xl border border-rose-500/30 flex flex-col gap-4 max-h-[90vh] overflow-hidden anim-pop-in">
+            <div class="text-center">
+                <h2 class="text-lg sm:text-2xl font-black header-font text-rose-400 uppercase data-lang" data-en="BANNED FROM THIS MATCH" data-ar="محظورون من هذه المباراة">BANNED FROM THIS MATCH</h2>
+                <p class="text-xs text-slate-400 mt-1 data-lang" data-en="These heroes are unavailable to everyone for the rest of this round." data-ar="هؤلاء الأبطال غير متاحين لأي شخص لبقية هذه الجولة.">These heroes are unavailable to everyone for the rest of this round.</p>
+            </div>
+            <div id="post-ban-summary-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 overflow-y-auto custom-scroll p-2 flex-grow">
+            </div>
+            <button onclick="closePostBanSummaryOverlay()" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-black rounded header-font tracking-wider text-sm transition hover-juice data-lang" data-en="CONTINUE TO DRAFT" data-ar="المتابعة إلى الاختيار">CONTINUE TO DRAFT</button>
+        </div>
+    </div>
+
+    <!-- Manual "space saver" viewer: portraits only, opened any time from the header button -->
+    <div id="banned-viewer-overlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[90] hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg glass-panel p-6 rounded-2xl border border-rose-500/30 flex flex-col gap-4 max-h-[85vh] overflow-hidden anim-pop-in">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h2 class="text-lg font-black header-font text-rose-400 uppercase data-lang" data-en="BANNED CHARACTERS" data-ar="الأبطال المحظورون">BANNED CHARACTERS</h2>
+                <button onclick="closeBannedViewerOverlay(); playSFX();" class="text-slate-400 hover:text-white transition hover:scale-110"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+            <div id="banned-viewer-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-2 overflow-y-auto custom-scroll p-2">
             </div>
         </div>
     </div>
@@ -348,20 +372,31 @@
         <div class="w-full max-w-3xl glass-panel p-6 rounded-2xl border border-red-500/30 flex flex-col gap-4 max-h-[95vh] overflow-hidden anim-pop-in">
             <div class="text-center">
                 <h2 class="text-lg sm:text-2xl font-black header-font text-red-500 uppercase data-lang" data-en="SABOTAGE PROTOCOL: STEAL PHASE" data-ar="بروتوكول التخريب: مرحلة السرقة">SABOTAGE PROTOCOL: STEAL PHASE</h2>
-                <p class="text-xs text-slate-400 mt-1 data-lang" data-en="Select up to 2 categories to blind-steal from your opponent. You will swap your hero for whatever they drafted in that category!" data-ar="اختر حتى فئتين لسرقتها من خصمك بشكل أعمى. ستبدل بطلك بأي بطل اختاروه في تلك الفئة!">Select up to 2 categories to blind-steal from your opponent. You will swap your hero for whatever they drafted in that category!</p>
+                <p id="steal-phase-subtext" class="text-xs text-slate-400 mt-1"></p>
                 <div class="mt-3 inline-block bg-slate-900 border border-slate-800 px-4 py-1 rounded-full">
                     <span class="text-sm font-bold text-white header-font"><span id="steal-count-display">0</span> / 2</span>
-                    <span class="text-xs text-red-500 uppercase data-lang" data-en="STEALS SELECTED" data-ar="تم اختيار السرقة">STEALS SELECTED</span>
+                    <span class="text-xs text-red-500 uppercase data-lang" data-en="STOLEN" data-ar="مسروق">STOLEN</span>
                 </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 overflow-y-auto custom-scroll p-2 flex-grow" id="steal-grid">
+
+            <!-- Step 1: choose a victim -->
+            <div id="steal-victim-picker" class="flex flex-col gap-3 flex-grow overflow-hidden">
+                <div id="steal-victim-list" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto custom-scroll p-2 flex-grow"></div>
             </div>
-            <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-4">
-                <button onclick="confirmSteals(true)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-sm header-font border border-slate-700 transition hover-juice data-lang" data-en="PASS (NO STEALS)" data-ar="تخطي (بدون سرقة)">PASS (NO STEALS)</button>
-                <div class="flex items-center gap-3">
-                    <span id="steal-waiting-msg" class="text-xs text-amber-500 font-bold hidden animate-pulse data-lang" data-en="WAITING FOR OPPONENT..." data-ar="بانتظار الخصم...">WAITING FOR OPPONENT...</span>
-                    <button onclick="confirmSteals(false)" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-black rounded text-sm header-font tracking-wider transition hover-juice data-lang" data-en="CONFIRM STEALS" data-ar="تأكيد السرقة">CONFIRM STEALS</button>
-                </div>
+
+            <!-- Step 2: choose a category from the locked-in victim (no going back from here) -->
+            <div id="steal-category-picker" class="hidden flex-col gap-3 flex-grow overflow-hidden">
+                <div id="steal-category-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 overflow-y-auto custom-scroll p-2 flex-grow"></div>
+            </div>
+
+            <!-- Step 3: waiting for everyone else to finish stealing -->
+            <div id="steal-waiting-view" class="hidden flex-col items-center justify-center gap-3 flex-grow py-8 text-center">
+                <i class="fa-solid fa-user-secret text-red-500 text-2xl animate-pulse"></i>
+                <p id="steal-waiting-text" class="text-sm text-slate-400 font-bold uppercase header-font"></p>
+            </div>
+
+            <div class="flex justify-center items-center mt-2 border-t border-slate-800 pt-4">
+                <button id="btn-done-stealing" onclick="confirmSteals(true)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-sm header-font border border-slate-700 transition hover-juice data-lang" data-en="DONE STEALING" data-ar="انتهيت من السرقة">DONE STEALING</button>
             </div>
         </div>
     </div>
@@ -410,6 +445,9 @@
             </button>
             <button onclick="openCharacterListOverlay(); playSFX();" class="px-3 py-2 bg-purple-900/40 hover:bg-purple-800/60 text-purple-400 font-bold rounded text-sm border border-purple-500/30 transition hover-juice" title="Character List">
                 <i class="fa-solid fa-users"></i>
+            </button>
+            <button id="btn-view-banned" onclick="openBannedViewerOverlay(); playSFX();" class="hidden px-3 py-2 bg-rose-900/40 hover:bg-rose-800/60 text-rose-400 font-bold rounded text-sm border border-rose-500/30 transition hover-juice" title="View Banned Characters">
+                <i class="fa-solid fa-ban"></i>
             </button>
             <button onclick="openProfileOverlay(); playSFX();" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded text-sm border border-slate-700 transition hover-juice" title="Pilot Profile">
                 <i class="fa-solid fa-user-astronaut"></i>
@@ -541,6 +579,17 @@
         let mySelectedSteals = []; // array of { category, fromPlayer }
         let myStealsReady = false;
         let remoteStealsData = {}; // { username: { steals: [{category, fromPlayer}], ready: bool } }
+
+        // Sequential ban-phase turn state
+        let banTurnOrder = []; // array of usernames, repeated for each ban-per-player round (round-robin)
+        let banTurnIndex = 0;
+        let banTurnDeadline = 0; // absolute timestamp, 0 = no timer (solo play)
+        let banHostTimeoutHandle = null; // authoritative timeout, only ever runs on whoever resolves turns (host or solo)
+        let banTurnCountdownHandle = null; // cosmetic UI countdown, runs on every client
+
+        // Steal-phase redesign state
+        let stealVictimLock = null; // victim locked in for the CURRENT steal action; null while on the picker screen
+        let myStolenCategories = []; // category ids filled via stealing this round, for the post-game highlight
 
         const catKeys = ["strength", "speed", "durability", "iq", "combat", "ability", "stamina", "agility", "bmv"];
 
@@ -1343,106 +1392,210 @@ if(bestHeroId) {
         }
 
         // --- SABOTAGE: BAN PHASE --- //
+        // --- SABOTAGE: SEQUENTIAL BAN PHASE --- //
         function openBanPhase() {
             document.getElementById("result-overlay").classList.add("hidden");
+            globalBannedIds = [];
+            document.getElementById("btn-view-banned").classList.add("hidden");
+
+            if (multiplayerRole === 'peer') {
+                // Peers don't compute the turn order themselves -- they wait for the host's
+                // BAN_PHASE_INIT broadcast so everyone agrees on the exact same rotation.
+                document.getElementById("ban-overlay").classList.remove("hidden");
+                document.getElementById("ban-overlay").classList.add("flex");
+                document.getElementById("ban-turn-indicator").innerText = currentCulture === 'en' ? "Synchronizing with host..." : "جارٍ المزامنة مع المضيف...";
+                document.getElementById("ban-timer-bar-wrap").classList.add("hidden");
+                document.getElementById("ban-grid").innerHTML = "";
+                document.getElementById("btn-pass-ban-turn").classList.add("hidden");
+                return;
+            }
+
+            // Host (or solo) is authoritative: build the round-robin turn order and kick off turn 1.
+            const players = Object.keys(roomCompetitorsData).length > 0 ? Object.keys(roomCompetitorsData) : [localPlayerUser];
+            const bansPerPlayer = Math.max(1, Math.floor(16 / players.length));
+            banTurnOrder = [];
+            for (let round = 0; round < bansPerPlayer; round++) {
+                players.forEach(p => banTurnOrder.push(p));
+            }
+            banTurnIndex = 0;
+
             document.getElementById("ban-overlay").classList.remove("hidden");
             document.getElementById("ban-overlay").classList.add("flex");
-            globalBannedIds = [];
-            mySelectedBans = [];
-            myBansReady = false;
-            remoteBansData = {};
+            document.getElementById("ban-count-total").innerText = banTurnOrder.length;
             document.getElementById("ban-count-display").innerText = "0";
-            document.getElementById("ban-waiting-msg").classList.add("hidden");
-            
+
+            broadcastToPeers({ type: "BAN_PHASE_INIT", turnOrder: banTurnOrder });
+            startBanTurn();
+        }
+
+        // HOST/SOLO ONLY: begins the next scheduled turn (or concludes if the order is exhausted).
+        function startBanTurn() {
+            if (banTurnIndex >= banTurnOrder.length) {
+                concludeBanPhase();
+                resetGameField(true, true); // broadcasts FIELD_RESET; peers pick it up via the message handler
+                return;
+            }
+            const activePlayer = banTurnOrder[banTurnIndex];
+            const useTimer = multiplayerRole !== 'local';
+            banTurnDeadline = useTimer ? Date.now() + 15000 : 0;
+
+            broadcastToPeers({ type: "BAN_TURN_START", activePlayer: activePlayer, deadline: banTurnDeadline, turnIndex: banTurnIndex });
+            beginBanTurnUI(activePlayer, banTurnDeadline);
+
+            clearTimeout(banHostTimeoutHandle);
+            if (useTimer) {
+                banHostTimeoutHandle = setTimeout(() => resolveBanTurn(activePlayer, null), 15300);
+            }
+        }
+
+        // Shared by every client (host, peers, solo): updates the turn indicator, timer bar, and grid.
+        function beginBanTurnUI(activePlayer, deadline) {
+            const isMe = activePlayer === localPlayerUser;
+            document.getElementById("ban-turn-indicator").innerHTML = isMe
+                ? `<span class="text-emerald-400">${currentCulture === 'en' ? 'YOUR TURN TO BAN' : 'دورك لتحظر بطلاً'}</span>`
+                : `${currentCulture === 'en' ? 'WAITING ON' : 'بانتظار'} <span class="text-amber-400">${activePlayer}</span>`;
+
+            renderBanGrid();
+            document.getElementById("btn-pass-ban-turn").classList.toggle("hidden", !isMe);
+
+            clearInterval(banTurnCountdownHandle);
+            const barWrap = document.getElementById("ban-timer-bar-wrap");
+            const bar = document.getElementById("ban-timer-bar");
+            if (deadline > 0) {
+                barWrap.classList.remove("hidden");
+                const update = () => {
+                    const remaining = Math.max(0, deadline - Date.now());
+                    bar.style.width = Math.min(100, (remaining / 15000) * 100) + "%";
+                    bar.classList.toggle("bg-red-500", remaining < 5000);
+                    bar.classList.toggle("bg-emerald-500", remaining >= 5000);
+                    if (remaining <= 0) clearInterval(banTurnCountdownHandle);
+                };
+                update();
+                banTurnCountdownHandle = setInterval(update, 100);
+            } else {
+                barWrap.classList.add("hidden");
+            }
+        }
+
+        function renderBanGrid() {
             const grid = document.getElementById("ban-grid");
             grid.innerHTML = "";
             const db = databases[activeUniverseKey];
-            
+            const isMyTurn = banTurnOrder[banTurnIndex] === localPlayerUser;
+
             db.forEach((hero, index) => {
+                const isBanned = globalBannedIds.includes(hero.id);
+                const name = currentCulture === 'en' ? hero.name : hero.nameAr;
                 const btn = document.createElement("button");
-                btn.className = `p-2 rounded bg-slate-900 border border-slate-800 text-[10px] uppercase font-bold tracking-wider hover:border-emerald-500 transition duration-150 flex flex-col items-center gap-1 hover-juice anim-fade-up`;
-                btn.style.animationDelay = `${(index % 20) * 0.02}s`;
-                btn.style.opacity = '0';
                 btn.id = `ban-btn-${hero.id}`;
-               let banIconHTML = `<i class="${hero.icon} text-slate-500 text-sm mb-1"></i>`;
-                if (hero.symbolImg) {
-                    banIconHTML = `<img src="${hero.symbolImg}" alt="${hero.name}" class="w-6 h-6 mb-1 object-contain opacity-70 grayscale transition duration-200">`;
+
+                let iconHTML = `<i class="${hero.icon} text-slate-500 text-sm mb-1"></i>`;
+                if (hero.symbolImg) iconHTML = `<img src="${hero.symbolImg}" alt="${name}" class="w-6 h-6 mb-1 object-contain">`;
+
+                if (isBanned) {
+                    btn.disabled = true;
+                    btn.className = "p-2 rounded bg-slate-950 border border-slate-900 text-[10px] uppercase font-bold tracking-wider flex flex-col items-center gap-1 relative opacity-40 grayscale cursor-not-allowed";
+                    btn.innerHTML = `${iconHTML}<span class="truncate w-full line-through">${name}</span><div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-xmark text-red-500 text-2xl opacity-90"></i></div>`;
+                } else {
+                    btn.disabled = !isMyTurn;
+                    btn.className = `p-2 rounded bg-slate-900 border text-[10px] uppercase font-bold tracking-wider flex flex-col items-center gap-1 transition duration-150 anim-fade-up ${isMyTurn ? 'border-slate-800 hover:border-emerald-500 hover-juice cursor-pointer' : 'border-slate-800 opacity-50 cursor-default'}`;
+                    btn.style.animationDelay = `${(index % 20) * 0.015}s`;
+                    btn.style.opacity = '0';
+                    btn.innerHTML = `${iconHTML}<span class="truncate w-full">${name}</span>`;
+                    if (isMyTurn) btn.onclick = () => submitBanAction(hero.id);
                 }
-                
-                btn.innerHTML = `
-                    ${banIconHTML}
-                    <span class="truncate w-full">${currentCulture === 'en' ? hero.name : hero.nameAr}</span>
-                `;
-                btn.onclick = () => toggleBanSelection(hero.id, btn);
                 grid.appendChild(btn);
             });
         }
 
-        function toggleBanSelection(id, btnElement) {
-            if(myBansReady) return;
+        function submitBanAction(heroId) {
+            if (banTurnOrder[banTurnIndex] !== localPlayerUser) return;
             playSFX();
-            const idx = mySelectedBans.indexOf(id);
-            
-            // Safely grab either the FontAwesome icon or the Image
-            const iconEl = btnElement.querySelector('i');
-            const imgEl = btnElement.querySelector('img');
+            processBanSubmission(localPlayerUser, heroId);
+        }
 
-            if(idx > -1) {
-                mySelectedBans.splice(idx, 1);
-                btnElement.classList.replace("border-red-500", "border-slate-800");
-                btnElement.classList.replace("bg-red-950/40", "bg-slate-900");
-                if(iconEl) iconEl.classList.replace("text-red-500", "text-slate-500");
-                if(imgEl) { 
-                    imgEl.classList.add("grayscale", "opacity-70"); 
-                    imgEl.style.filter = ''; 
-                }
+        function passBanTurn() {
+            if (banTurnOrder[banTurnIndex] !== localPlayerUser) return;
+            playSFX();
+            processBanSubmission(localPlayerUser, null);
+        }
+
+        function processBanSubmission(user, heroId) {
+            if (multiplayerRole === 'host' || multiplayerRole === 'local') {
+                resolveBanTurn(user, heroId);
             } else {
-                if(mySelectedBans.length >= 8) return; 
-                mySelectedBans.push(id);
-                btnElement.classList.replace("border-slate-800", "border-red-500");
-                btnElement.classList.replace("bg-slate-900", "bg-red-950/40");
-                if(iconEl) iconEl.classList.replace("text-slate-500", "text-red-500");
-                if(imgEl) { 
-                    imgEl.classList.remove("grayscale", "opacity-70"); 
-                    // Add a red glow to selected images to match the UI aesthetic
-                    imgEl.style.filter = 'drop-shadow(0 0 5px rgba(239, 68, 68, 0.8))'; 
-                }
+                broadcastToPeers({ type: "BAN_ACTION", user: user, heroId: heroId, turnIndex: banTurnIndex });
+                document.getElementById("btn-pass-ban-turn").classList.add("hidden");
+                document.querySelectorAll("#ban-grid button").forEach(b => b.disabled = true);
             }
-            document.getElementById("ban-count-display").innerText = mySelectedBans.length;
-        }
-        function confirmBans(passed = false) {
-            if (myBansReady) return;
-            playSFX();
-            if (passed) mySelectedBans = [];
-            myBansReady = true;
-            document.getElementById("ban-waiting-msg").classList.remove("hidden");
-            
-            broadcastToPeers({ type: "BANS_READY", bans: mySelectedBans, user: localPlayerUser });
-            checkIfAllBansReady();
         }
 
-        function checkIfAllBansReady() {
-            const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
-            const readyCount = (myBansReady ? 1 : 0) + Object.values(remoteBansData).filter(p => p.ready).length;
-            document.getElementById("ban-waiting-msg").innerText = currentCulture === 'en'
-                ? `Waiting for other players... (${readyCount}/${totalPlayers} ready)`
-                : `بانتظار بقية اللاعبين... (${readyCount}/${totalPlayers} جاهز)`;
-
-            if (!hasAnyConnection() || readyCount >= totalPlayers) {
-                let allBans = [...mySelectedBans];
-                Object.values(remoteBansData).forEach(p => allBans.push(...(p.bans || [])));
-                globalBannedIds = [...new Set(allBans)];
-                document.getElementById("ban-overlay").classList.add("hidden");
-                document.getElementById("ban-overlay").classList.remove("flex");
-                
-                myDraftReadyForSteal = false;
-                remoteFinalSlotsData = {};
-                mySelectedSteals = [];
-                myStealsReady = false;
-                remoteStealsData = {};
-                
-                resetGameField(false, true); 
+        // HOST/SOLO ONLY: authoritative resolution of whoever's turn just ended (ban or pass).
+        function resolveBanTurn(user, heroId) {
+            clearTimeout(banHostTimeoutHandle);
+            if (heroId && !globalBannedIds.includes(heroId)) {
+                globalBannedIds.push(heroId);
             }
+            banTurnIndex++;
+            broadcastToPeers({ type: "BAN_RESOLVED", bannedId: heroId, user: user, globalBannedIds: globalBannedIds, nextIndex: banTurnIndex });
+            document.getElementById("ban-count-display").innerText = globalBannedIds.length;
+            startBanTurn();
+        }
+
+        function concludeBanPhase() {
+            clearTimeout(banHostTimeoutHandle);
+            clearInterval(banTurnCountdownHandle);
+            document.getElementById("ban-overlay").classList.add("hidden");
+            document.getElementById("ban-overlay").classList.remove("flex");
+            document.getElementById("btn-view-banned").classList.remove("hidden");
+            openPostBanSummaryOverlay();
+        }
+
+        function openPostBanSummaryOverlay() {
+            renderBannedCharacterGrid("post-ban-summary-grid", true);
+            document.getElementById("post-ban-summary-overlay").classList.remove("hidden");
+            document.getElementById("post-ban-summary-overlay").classList.add("flex");
+        }
+
+        function closePostBanSummaryOverlay() {
+            document.getElementById("post-ban-summary-overlay").classList.add("hidden");
+            document.getElementById("post-ban-summary-overlay").classList.remove("flex");
+        }
+
+        function openBannedViewerOverlay() {
+            renderBannedCharacterGrid("banned-viewer-grid", false);
+            document.getElementById("banned-viewer-overlay").classList.remove("hidden");
+            document.getElementById("banned-viewer-overlay").classList.add("flex");
+        }
+
+        function closeBannedViewerOverlay() {
+            document.getElementById("banned-viewer-overlay").classList.add("hidden");
+            document.getElementById("banned-viewer-overlay").classList.remove("flex");
+        }
+
+        // Shared renderer for both the auto post-ban popup (with names) and the manual
+        // "space saver" viewer (portraits only).
+        function renderBannedCharacterGrid(containerId, showNames) {
+            const grid = document.getElementById(containerId);
+            grid.innerHTML = "";
+            const db = databases[activeUniverseKey];
+            if (globalBannedIds.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-500 font-bold uppercase header-font text-xs p-4">${currentCulture === 'en' ? 'No characters were banned.' : 'لم يتم حظر أي أبطال.'}</div>`;
+                return;
+            }
+            globalBannedIds.forEach(id => {
+                const hero = db.find(h => h.id === id);
+                if (!hero) return;
+                const name = currentCulture === 'en' ? hero.name : hero.nameAr;
+                let iconHTML = `<i class="${hero.icon} text-slate-400 text-lg"></i>`;
+                if (hero.symbolImg) iconHTML = `<img src="${hero.symbolImg}" alt="${name}" class="w-10 h-10 object-contain mx-auto">`;
+                const card = document.createElement("div");
+                card.className = "p-2 rounded-lg bg-slate-900/60 border border-rose-500/20 flex flex-col items-center gap-1 text-center";
+                card.innerHTML = showNames
+                    ? `${iconHTML}<span class="text-[10px] font-bold header-font text-slate-300 uppercase truncate w-full">${name}</span>`
+                    : iconHTML;
+                grid.appendChild(card);
+            });
         }
 
         // --- CORE DRAFT RESET --- //
@@ -1453,6 +1606,14 @@ if(bestHeroId) {
             selectedCharacter = null;
             activeBlitzCategoryId = null;
             blitzRoundActive = (gameMode !== 'blitz'); 
+
+            myDraftReadyForSteal = false;
+            remoteFinalSlotsData = {};
+            mySelectedSteals = [];
+            myStealsReady = false;
+            remoteStealsData = {};
+            myStolenCategories = [];
+            stealVictimLock = null;
             
             Object.keys(roomCompetitorsData).forEach(userKey => {
                 roomCompetitorsData[userKey].progress = 0;
@@ -1803,6 +1964,7 @@ if(bestHeroId) {
         }
 
         // --- SABOTAGE: STEAL PHASE --- //
+        // --- SABOTAGE: STEAL PHASE (choose victim, then one category, repeat) --- //
         function checkIfDraftsReadyForSteal() {
             const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
             const readyCount = (myDraftReadyForSteal ? 1 : 0) + Object.values(remoteFinalSlotsData).filter(p => p.ready).length;
@@ -1814,72 +1976,128 @@ if(bestHeroId) {
         function openStealPhase() {
             document.getElementById("steal-overlay").classList.remove("hidden");
             document.getElementById("steal-overlay").classList.add("flex");
-            document.getElementById("steal-count-display").innerText = "0";
-            document.getElementById("steal-waiting-msg").classList.add("hidden");
-            
-            const grid = document.getElementById("steal-grid");
+            document.getElementById("steal-count-display").innerText = mySelectedSteals.length;
+            stealVictimLock = null;
+            showStealVictimPicker();
+        }
+
+        function showStealVictimPicker() {
+            document.getElementById("steal-category-picker").classList.add("hidden");
+            document.getElementById("steal-category-picker").classList.remove("flex");
+            document.getElementById("steal-waiting-view").classList.add("hidden");
+            document.getElementById("steal-waiting-view").classList.remove("flex");
+            document.getElementById("steal-victim-picker").classList.remove("hidden");
+            document.getElementById("steal-victim-picker").classList.add("flex");
+            document.getElementById("btn-done-stealing").classList.remove("hidden");
+            document.getElementById("steal-phase-subtext").innerText = currentCulture === 'en'
+                ? "Choose a rival to steal from. Once you pick, you can't change your mind for this steal."
+                : "اختر لاعباً منافساً لتسرق منه. بمجرد الاختيار، لا يمكنك التراجع لهذه السرقة.";
+
+            const list = document.getElementById("steal-victim-list");
+            list.innerHTML = "";
+            const availableVictims = Object.keys(remoteFinalSlotsData).filter(name => {
+                const slots = (remoteFinalSlotsData[name] && remoteFinalSlotsData[name].slots) || {};
+                return Object.keys(slots).some(catId => !mySelectedSteals.some(s => s.category === catId));
+            });
+
+            if (availableVictims.length === 0 || mySelectedSteals.length >= 2) {
+                list.innerHTML = `<div class="col-span-full text-center text-slate-500 font-bold uppercase header-font text-xs p-4">${currentCulture === 'en' ? 'NO MORE STEALS AVAILABLE' : 'لا مزيد من السرقات المتاحة'}</div>`;
+                return;
+            }
+
+            availableVictims.forEach((name, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-red-500 transition hover-juice text-center anim-fade-up";
+                btn.style.animationDelay = `${idx * 0.04}s`;
+                btn.style.opacity = '0';
+                btn.innerHTML = `<i class="fa-solid fa-user-ninja text-red-500 text-xl mb-2"></i><div class="font-black header-font text-white uppercase truncate">${name}</div>`;
+                btn.onclick = () => lockStealVictim(name);
+                list.appendChild(btn);
+            });
+        }
+
+        function lockStealVictim(victimName) {
+            if (mySelectedSteals.length >= 2) return;
+            playSFX();
+            stealVictimLock = victimName;
+            showStealCategoryPicker(victimName);
+        }
+
+        function showStealCategoryPicker(victimName) {
+            document.getElementById("steal-victim-picker").classList.add("hidden");
+            document.getElementById("steal-victim-picker").classList.remove("flex");
+            document.getElementById("steal-category-picker").classList.remove("hidden");
+            document.getElementById("steal-category-picker").classList.add("flex");
+            document.getElementById("btn-done-stealing").classList.add("hidden");
+            document.getElementById("steal-phase-subtext").innerHTML = currentCulture === 'en'
+                ? `Pick ONE category to steal from <span class="text-red-400 font-bold">${victimName}</span>. This choice is final.`
+                : `اختر فئة واحدة لسرقتها من <span class="text-red-400 font-bold">${victimName}</span>. هذا الاختيار نهائي.`;
+
+            const grid = document.getElementById("steal-category-grid");
             grid.innerHTML = "";
-            let optionIndex = 0;
+            const victimSlots = (remoteFinalSlotsData[victimName] && remoteFinalSlotsData[victimName].slots) || {};
             let anyOptions = false;
 
-            categories.forEach((cat) => {
+            categories.forEach((cat, index) => {
+                if (!victimSlots[cat.id]) return;
+                if (mySelectedSteals.some(s => s.category === cat.id)) return;
+                anyOptions = true;
+
                 const catName = currentCulture === "en" ? cat.name : cat.nameAr;
-                const hiddenName = currentCulture === "en" ? "UNKNOWN HERO" : "بطل مجهول";
+                const catGuide = currentCulture === "en" ? cat.guide : cat.guideAr;
+                const buttonLabel = currentCulture === "en" ? "STEAL" : "اسرق";
 
-                Object.keys(remoteFinalSlotsData).forEach(rivalName => {
-                    const rivalSlots = (remoteFinalSlotsData[rivalName] && remoteFinalSlotsData[rivalName].slots) || {};
-                    const heroId = rivalSlots[cat.id];
-                    if (!heroId) return;
-                    anyOptions = true;
-
-                    const btn = document.createElement("button");
-                    btn.className = `p-3 rounded-xl bg-slate-900 border border-slate-800 text-left hover:border-red-500 transition relative overflow-hidden anim-fade-up hover-juice`;
-                    btn.style.animationDelay = `${(optionIndex++) * 0.03}s`;
-                    btn.style.opacity = '0';
-                    btn.id = `steal-btn-${cat.id}-${rivalName}`;
-                    btn.innerHTML = `
-                        <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-slate-700 to-slate-900"></div>
-                        <div class="text-[10px] text-slate-500 uppercase font-bold header-font mb-1"><i class="${cat.icon} mr-1"></i>${catName}</div>
-                        <div class="text-sm font-bold text-slate-400 header-font"><i class="fa-solid fa-question text-xs text-slate-500 mr-1"></i>${hiddenName}</div>
-                        <div class="mt-1 text-[10px] font-black uppercase text-red-400/80 truncate">${currentCulture === 'en' ? 'FROM' : 'من'}: ${rivalName}</div>
-                        <div class="mt-2 text-[10px] font-black uppercase text-slate-600 bg-slate-950 inline-block px-1.5 py-0.5 rounded border border-slate-800">WEIGHT: ???</div>
-                    `;
-                    btn.onclick = () => toggleStealSelection(cat.id, rivalName, btn);
-                    grid.appendChild(btn);
-                });
+                const node = document.createElement("div");
+                node.className = "p-3 rounded-lg border flex flex-col justify-between min-h-[140px] bg-slate-950/20 border-red-900/60 hover:border-red-500 transition duration-300 anim-fade-up";
+                node.style.animationDelay = `${index * 0.05}s`;
+                node.style.opacity = '0';
+                node.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center text-[10px] text-red-400 uppercase font-bold header-font">
+                            <span><i class="${cat.icon} mr-1"></i>${catName}</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400/70 leading-tight mt-1">${catGuide}</p>
+                    </div>
+                    <button class="w-full mt-3 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-400 text-[10px] font-bold rounded uppercase tracking-widest header-font transition duration-200 hover-juice">${buttonLabel}</button>
+                `;
+                node.querySelector("button").onclick = () => commitSteal(cat.id, victimName);
+                grid.appendChild(node);
             });
 
             if (!anyOptions) {
-                grid.innerHTML = `<div class="col-span-full text-center text-slate-500 font-bold uppercase header-font text-xs p-4">${currentCulture==='en'?'NO OPPONENT DETECTED IN LOCAL MODE':'لا يوجد خصم متصل في هذا الطور'}</div>`;
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-500 font-bold uppercase header-font text-xs p-4">${currentCulture === 'en' ? 'NOTHING LEFT TO STEAL FROM THIS PLAYER' : 'لا يوجد شيء متبقٍ لسرقته من هذا اللاعب'}</div>`;
             }
         }
 
-        function toggleStealSelection(catId, fromPlayer, btnElement) {
-            if(myStealsReady) return;
+        function commitSteal(catId, victimName) {
             playSFX();
-            const idx = mySelectedSteals.findIndex(s => s.category === catId && s.fromPlayer === fromPlayer);
-            if(idx > -1) {
-                mySelectedSteals.splice(idx, 1);
-                btnElement.classList.replace("border-red-500", "border-slate-800");
-                btnElement.classList.replace("bg-red-950/40", "bg-slate-900");
-            } else {
-                if(mySelectedSteals.length >= 2) return;
-                // Only one steal per category -- can't fill the same slot from two different rivals
-                if (mySelectedSteals.some(s => s.category === catId)) return;
-                mySelectedSteals.push({ category: catId, fromPlayer: fromPlayer });
-                btnElement.classList.replace("border-slate-800", "border-red-500");
-                btnElement.classList.replace("bg-slate-900", "bg-red-950/40");
-            }
+            mySelectedSteals.push({ category: catId, fromPlayer: victimName });
             document.getElementById("steal-count-display").innerText = mySelectedSteals.length;
+            stealVictimLock = null;
+
+            if (mySelectedSteals.length >= 2) {
+                finalizeSteals();
+            } else {
+                showStealVictimPicker();
+            }
         }
 
         function confirmSteals(passed = false) {
+            finalizeSteals();
+        }
+
+        function finalizeSteals() {
             if (myStealsReady) return;
-            playSFX();
-            if (passed) mySelectedSteals = [];
             myStealsReady = true;
-            document.getElementById("steal-waiting-msg").classList.remove("hidden");
-            
+            document.getElementById("steal-victim-picker").classList.add("hidden");
+            document.getElementById("steal-victim-picker").classList.remove("flex");
+            document.getElementById("steal-category-picker").classList.add("hidden");
+            document.getElementById("steal-category-picker").classList.remove("flex");
+            document.getElementById("btn-done-stealing").classList.add("hidden");
+            document.getElementById("steal-waiting-view").classList.remove("hidden");
+            document.getElementById("steal-waiting-view").classList.add("flex");
+            document.getElementById("steal-waiting-text").innerText = currentCulture === 'en' ? "Waiting for other players to finish stealing..." : "بانتظار بقية اللاعبين لينهوا سرقاتهم...";
+
             broadcastToPeers({ type: "STEALS_READY", steals: mySelectedSteals, user: localPlayerUser });
             checkIfAllStealsReady();
         }
@@ -1887,9 +2105,6 @@ if(bestHeroId) {
         function checkIfAllStealsReady() {
             const totalPlayers = Math.max(1, Object.keys(roomCompetitorsData).length);
             const readyCount = (myStealsReady ? 1 : 0) + Object.values(remoteStealsData).filter(p => p.ready).length;
-            document.getElementById("steal-waiting-msg").innerText = currentCulture === 'en'
-                ? `Waiting for other players... (${readyCount}/${totalPlayers} ready)`
-                : `بانتظار بقية اللاعبين... (${readyCount}/${totalPlayers} جاهز)`;
 
             if (!hasAnyConnection() || readyCount >= totalPlayers) {
                 // Each player only ever writes to their OWN assignedSlots, reading from an
@@ -1899,6 +2114,7 @@ if(bestHeroId) {
                     const victim = remoteFinalSlotsData[steal.fromPlayer];
                     if (victim && victim.slots && victim.slots[steal.category]) {
                         assignedSlots[steal.category] = victim.slots[steal.category];
+                        myStolenCategories.push(steal.category);
                     }
                 });
                 document.getElementById("steal-overlay").classList.add("hidden");
@@ -1970,12 +2186,16 @@ if(bestHeroId) {
                     const pts = rawStat * weight; 
                     runningSum += pts;
                     
+                    const isStolen = myStolenCategories.includes(cat.id);
                     const logRow = document.createElement("div");
-                    logRow.className = "flex justify-between border-b border-slate-900 py-0.5 text-slate-400";
+                    logRow.className = isStolen
+                        ? "flex justify-between border-b border-purple-800/50 py-0.5 px-1 rounded text-purple-300 bg-purple-950/30"
+                        : "flex justify-between border-b border-slate-900 py-0.5 text-slate-400";
                     const displayCatName = currentCulture === "en" ? cat.name : cat.nameAr;
                     const displayHeroName = currentCulture === "en" ? match.name : match.nameAr;
+                    const stolenTag = isStolen ? `<i class="fa-solid fa-user-ninja text-purple-400 mr-1" title="${currentCulture === 'en' ? 'Stolen' : 'مسروق'}"></i>` : '';
                     
-                    logRow.innerHTML = `<span>${displayCatName}:</span><span class="text-white font-bold">${displayHeroName} <span class="text-amber-500 font-mono text-[10px] ml-2">+${pts} PTS <span class="text-slate-600">(${rawStat}x${weight})</span></span></span>`;
+                    logRow.innerHTML = `<span>${stolenTag}${displayCatName}:</span><span class="text-white font-bold">${displayHeroName} <span class="text-amber-500 font-mono text-[10px] ml-2">+${pts} PTS <span class="text-slate-600">(${rawStat}x${weight})</span></span></span>`;
                     targetSummary.appendChild(logRow);
                 }
             });
@@ -2100,6 +2320,8 @@ if(bestHeroId) {
             activeBlitzCategoryId = null;
             blitzRoundActive = (gameMode !== 'blitz');
             
+            clearTimeout(banHostTimeoutHandle);
+            clearInterval(banTurnCountdownHandle);
             globalBannedIds = [];
             mySelectedBans = [];
             myBansReady = false;
@@ -2109,6 +2331,8 @@ if(bestHeroId) {
             mySelectedSteals = [];
             myStealsReady = false;
             remoteStealsData = {};
+            myStolenCategories = [];
+            document.getElementById("btn-view-banned").classList.add("hidden");
             
             Object.keys(roomCompetitorsData).forEach(u => {
                 roomCompetitorsData[u].progress = 0;
@@ -2274,7 +2498,7 @@ if(bestHeroId) {
                 // connect to the host (hub-and-spoke), never to each other, so the host is the
                 // only one who can pass an event along -- and since every payload already
                 // carries the original sender's identity in `user`, it can be forwarded as-is.
-                const relayTypes = ["HELLO_IDENTITY", "COMMIT_HERO", "BANS_READY", "DRAFT_COMPLETE", "STEALS_READY", "SCORE_SYNC", "CHAT_MESSAGE"];
+                const relayTypes = ["HELLO_IDENTITY", "COMMIT_HERO", "DRAFT_COMPLETE", "STEALS_READY", "SCORE_SYNC", "CHAT_MESSAGE"];
                 if (multiplayerRole === "host" && relayTypes.includes(data.type)) {
                     broadcastToPeers(data, conn.peer);
                 }
@@ -2311,11 +2535,30 @@ if(bestHeroId) {
                     if(roomCompetitorsData[data.user]) {
                         roomCompetitorsData[data.user].progress = data.progress || 0;
                     }
-                } else if (data.type === "BANS_READY") {
-                    if (!remoteBansData[data.user]) remoteBansData[data.user] = {};
-                    remoteBansData[data.user].bans = data.bans || [];
-                    remoteBansData[data.user].ready = true;
-                    checkIfAllBansReady();
+                } else if (data.type === "BAN_PHASE_INIT") {
+                    banTurnOrder = data.turnOrder;
+                    banTurnIndex = 0;
+                    globalBannedIds = [];
+                    document.getElementById("ban-count-total").innerText = banTurnOrder.length;
+                    document.getElementById("ban-count-display").innerText = "0";
+                    renderBanGrid();
+                } else if (data.type === "BAN_TURN_START") {
+                    banTurnIndex = data.turnIndex;
+                    beginBanTurnUI(data.activePlayer, data.deadline);
+                } else if (data.type === "BAN_ACTION") {
+                    // Only the host ever needs to act on this -- a peer submitting their turn.
+                    if (multiplayerRole === "host" && data.turnIndex === banTurnIndex && banTurnOrder[banTurnIndex] === data.user) {
+                        resolveBanTurn(data.user, data.heroId);
+                    }
+                } else if (data.type === "BAN_RESOLVED") {
+                    globalBannedIds = data.globalBannedIds;
+                    banTurnIndex = data.nextIndex;
+                    document.getElementById("ban-count-display").innerText = globalBannedIds.length;
+                    if (banTurnIndex >= banTurnOrder.length) {
+                        concludeBanPhase();
+                    } else {
+                        renderBanGrid();
+                    }
                 } else if (data.type === "DRAFT_COMPLETE") {
                     if (!remoteFinalSlotsData[data.user]) remoteFinalSlotsData[data.user] = {};
                     remoteFinalSlotsData[data.user].slots = data.finalSlots || {};
